@@ -20,6 +20,7 @@ typedef struct OnigRegExp_ {
   int lastSearchStrUniqueId;
   int lastSearchPosition;
   OnigRegion* lastSearchResult;
+  bool lastSearchResultMatched;
 } OnigRegExp;
 
 typedef struct OnigScanner_ {
@@ -91,37 +92,30 @@ OnigRegExp* createOnigRegExp(unsigned char* data, int length) {
   result->hasGAnchor = hasGAnchor(data, length);
   result->lastSearchStrUniqueId = 0;
   result->lastSearchPosition = 0;
-  result->lastSearchResult = NULL;
+  result->lastSearchResult = onig_region_new();
+  result->lastSearchResultMatched = false;
   return result;
 }
 
 void freeOnigRegExp(OnigRegExp* regex) {
   onig_free(regex->regex);
-  if (regex->lastSearchResult) {
-    onig_region_free(regex->lastSearchResult, 1);
-    regex->lastSearchResult = NULL;
-  }
+  onig_region_free(regex->lastSearchResult, 1);
   free(regex);
 }
 
 OnigRegion* _searchOnigRegExp(OnigRegExp* regex, OnigString* str, int position) {
   int status;
 
-  if (regex->lastSearchResult) {
-    onig_region_free(regex->lastSearchResult, 1);
-    regex->lastSearchResult = NULL;
-  }
-
-  regex->lastSearchResult = onig_region_new();
   status = onig_search(regex->regex, str->data, str->data + 2 * str->length,
                        str->data + 2 * position, str->data + 2 * str->length,
                        regex->lastSearchResult, ONIG_OPTION_NONE);
 
   if (status == ONIG_MISMATCH || status < 0) {
-    onig_region_free(regex->lastSearchResult, 1);
-    regex->lastSearchResult = NULL;
+    regex->lastSearchResultMatched = false;
+    return NULL;
   }
 
+  regex->lastSearchResultMatched = true;
   return regex->lastSearchResult;
 }
 
@@ -133,7 +127,12 @@ OnigRegion* searchOnigRegExp(OnigRegExp* regex, OnigString* str, int position) {
   }
 
   if (regex->lastSearchStrUniqueId == str->uniqueId && regex->lastSearchPosition <= position) {
-    if (regex->lastSearchResult == NULL || regex->lastSearchResult->beg[0] / 2 >= position) {
+    if (!regex->lastSearchResultMatched) {
+      // last time there was no match
+      return NULL;
+    }
+    if (regex->lastSearchResult->beg[0] / 2 >= position) {
+      // last time there was a match
       return regex->lastSearchResult;
     }
   }
