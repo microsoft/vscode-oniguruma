@@ -1,0 +1,31 @@
+{
+  "name": "vscode-oniguruma",
+  "version": "1.0.0",
+  "description": "VSCode oniguruma bindings",
+  "author": {
+    "name": "Microsoft Corporation"
+  },
+  "main": "release/main.js",
+  "typings": "main.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/vscode-oniguruma"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/microsoft/vscode-oniguruma/issues"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-onig": "cd deps/oniguruma && autoreconf -vfi && emconfigure ./configure && make clean && emmake make",
+    "build-wasm": "./scripts/build.sh",
+    "build-tsc": "tsc -p tsconfig.json",
+    "watch-tsc": "tsc -w -p tsconfig.json",
+    "package": "webpack && node ./scripts/cp ./out/onig.wasm ./release/onig.wasm"
+  },
+  "devDependencies": {
+    "typescript": "^3.8.3",
+    "webpack": "^4.42.1",
+    "webpack-cli": "^3.3.11"
+  }
+}

@@ -1,0 +1,7 @@
+{
+	"files.trimTrailingWhitespace": true,
+	"editor.insertSpaces": false,
+	"[cpp]": {
+		"editor.insertSpaces": true
+	},
+}
