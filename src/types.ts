@@ -5,11 +5,11 @@
 export type Pointer = number;
 
 export interface IOnigBinding {
+	HEAPU8: Uint8Array;
 	HEAPU32: Uint32Array;
 
 	_malloc(count: number): Pointer;
 	_free(ptr: Pointer): void;
-	stringToUTF16(str: string, buffer: Pointer): void;
 	UTF8ToString(ptr: Pointer): string;
 
 	_getLastOnigError(): Pointer;

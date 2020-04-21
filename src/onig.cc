@@ -66,8 +66,8 @@ int freeOnigString(OnigString* str) {
 bool hasGAnchor(unsigned char* str, int len) {
   int pos;
   for (pos = 0; pos < len; pos++) {
-    if (str[2 * pos] == '\\' && pos + 1 < len) {
-      if (str[2 * pos + 2] == 'G') {
+    if (str[pos] == '\\' && pos + 1 < len) {
+      if (str[pos + 1] == 'G') {
         return true;
       }
     }
@@ -79,8 +79,8 @@ OnigRegExp* createOnigRegExp(unsigned char* data, int length) {
   OnigRegExp* result;
   regex_t* regex;
 
-  lastOnigStatus = onig_new(&regex, data, data + 2 * length,
-                            ONIG_OPTION_CAPTURE_GROUP, ONIG_ENCODING_UTF16_LE,
+  lastOnigStatus = onig_new(&regex, data, data + length,
+                            ONIG_OPTION_CAPTURE_GROUP, ONIG_ENCODING_UTF8,
                             ONIG_SYNTAX_DEFAULT, &lastOnigErrorInfo);
 
   if (lastOnigStatus != ONIG_NORMAL) {
@@ -106,8 +106,8 @@ void freeOnigRegExp(OnigRegExp* regex) {
 OnigRegion* _searchOnigRegExp(OnigRegExp* regex, OnigString* str, int position) {
   int status;
 
-  status = onig_search(regex->regex, str->data, str->data + 2 * str->length,
-                       str->data + 2 * position, str->data + 2 * str->length,
+  status = onig_search(regex->regex, str->data, str->data + str->length,
+                       str->data + position, str->data + str->length,
                        regex->lastSearchResult, ONIG_OPTION_NONE);
 
   if (status == ONIG_MISMATCH || status < 0) {
@@ -131,8 +131,8 @@ OnigRegion* searchOnigRegExp(OnigRegExp* regex, OnigString* str, int position) {
       // last time there was no match
       return NULL;
     }
-    if (regex->lastSearchResult->beg[0] / 2 >= position) {
-      // last time there was a match
+    if (regex->lastSearchResult->beg[0] >= position) {
+      // last time there was a match and it occured after position
       return regex->lastSearchResult;
     }
   }
@@ -193,7 +193,7 @@ int findNextOnigScannerMatch(OnigScanner* scanner, OnigString* str, int startPos
   for (i = 0; i < scanner->count; i++) {
     result = searchOnigRegExp(scanner->regexes[i], str, startPosition);
     if (result != NULL && result->num_regs > 0) {
-      location = result->beg[0] / 2; // the offset is a byte offset
+      location = result->beg[0];
 
       if (bestResult == NULL || location < bestLocation) {
         bestLocation = location;
@@ -214,8 +214,8 @@ int findNextOnigScannerMatch(OnigScanner* scanner, OnigString* str, int startPos
   encodedResult[0] = bestResultIndex;
   encodedResult[1] = bestResult->num_regs;
   for (i = 0; i < bestResult->num_regs; i++) {
-    encodedResult[2 * i + 2] = bestResult->beg[i] / 2; // the offset is a byte offset
-    encodedResult[2 * i + 3] = bestResult->end[i] / 2; // the offset is a byte offset
+    encodedResult[2 * i + 2] = bestResult->beg[i];
+    encodedResult[2 * i + 3] = bestResult->end[i];
   }
   return (int)encodedResult;
 }
