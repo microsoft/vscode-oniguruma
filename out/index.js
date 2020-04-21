@@ -7,6 +7,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const onig_1 = __importDefault(require("./onig"));
+let onigBinding = null;
 function throwLastOnigError(onigBinding) {
     throw new Error(onigBinding.UTF8ToString(onigBinding._getLastOnigError()));
 }
@@ -135,7 +136,10 @@ class UtfString {
     }
 }
 class OnigString {
-    constructor(onigBinding, str) {
+    constructor(str) {
+        if (!onigBinding) {
+            throw new Error(`Must invoke loadWASM first.`);
+        }
         this._onigBinding = onigBinding;
         this.content = str;
         const utfString = new UtfString(str);
@@ -175,8 +179,12 @@ class OnigString {
         this._onigBinding._free(this._strPtr);
     }
 }
+exports.OnigString = OnigString;
 class OnigScanner {
-    constructor(onigBinding, patterns) {
+    constructor(patterns) {
+        if (!onigBinding) {
+            throw new Error(`Must invoke loadWASM first.`);
+        }
         const strPtrsArr = [];
         const strLenArr = [];
         for (let i = 0, len = patterns.length; i < len; i++) {
@@ -205,7 +213,7 @@ class OnigScanner {
     }
     findNextMatchSync(string, startPosition) {
         if (typeof string === 'string') {
-            string = new OnigString(this._onigBinding, string);
+            string = new OnigString(string);
             const result = this._findNextMatchSync(string, startPosition);
             string.dispose();
             return result;
@@ -239,8 +247,7 @@ class OnigScanner {
         };
     }
 }
-let onigBinding = null;
-let initCalled = false;
+exports.OnigScanner = OnigScanner;
 function _loadWASM(loader, resolve, reject) {
     const { log, warn, error } = console;
     onig_1.default({
@@ -259,6 +266,7 @@ function _loadWASM(loader, resolve, reject) {
         console.warn = warn;
     }
 }
+let initCalled = false;
 function loadWASM(data) {
     if (initCalled) {
         throw new Error(`Cannot invoke loadWASM more than once.`);
@@ -283,16 +291,10 @@ function loadWASM(data) {
 }
 exports.loadWASM = loadWASM;
 function createOnigString(str) {
-    if (!onigBinding) {
-        throw new Error(`Must invoke loadWASM first.`);
-    }
-    return new OnigString(onigBinding, str);
+    return new OnigString(str);
 }
 exports.createOnigString = createOnigString;
 function createOnigScanner(patterns) {
-    if (!onigBinding) {
-        throw new Error(`Must invoke loadWASM first.`);
-    }
-    return new OnigScanner(onigBinding, patterns);
+    return new OnigScanner(patterns);
 }
 exports.createOnigScanner = createOnigScanner;

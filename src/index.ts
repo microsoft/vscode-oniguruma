@@ -5,6 +5,8 @@
 import { IOnigBinding, Pointer, IOnigMatch, IOnigCaptureIndex, OnigScanner as IOnigScanner, OnigString as IOnigString } from './types';
 import OnigasmModuleFactory from './onig';
 
+let onigBinding: IOnigBinding | null = null;
+
 function throwLastOnigError(onigBinding: IOnigBinding): void {
 	throw new Error(onigBinding.UTF8ToString(onigBinding._getLastOnigError()));
 }
@@ -148,7 +150,7 @@ class UtfString {
 	}
 }
 
-class OnigString implements IOnigString {
+export class OnigString implements IOnigString {
 
 	private readonly _onigBinding: IOnigBinding;
 	public readonly content: string;
@@ -159,7 +161,10 @@ class OnigString implements IOnigString {
 	private readonly _strPtr: Pointer;
 	public readonly ptr: Pointer;
 
-	constructor(onigBinding: IOnigBinding, str: string) {
+	constructor(str: string) {
+		if (!onigBinding) {
+			throw new Error(`Must invoke loadWASM first.`);
+		}
 		this._onigBinding = onigBinding;
 		this.content = str;
 		const utfString = new UtfString(str);
@@ -203,12 +208,15 @@ class OnigString implements IOnigString {
 	}
 }
 
-class OnigScanner implements IOnigScanner {
+export class OnigScanner implements IOnigScanner {
 
 	private readonly _onigBinding: IOnigBinding;
 	private readonly _ptr: Pointer;
 
-	constructor(onigBinding: IOnigBinding, patterns: string[]) {
+	constructor(patterns: string[]) {
+		if (!onigBinding) {
+			throw new Error(`Must invoke loadWASM first.`);
+		}
 		const strPtrsArr: Pointer[] = [];
 		const strLenArr: number[] = [];
 		for (let i = 0, len = patterns.length; i < len; i++) {
@@ -244,7 +252,7 @@ class OnigScanner implements IOnigScanner {
 
 	public findNextMatchSync(string: string | OnigString, startPosition: number): IOnigMatch | null {
 		if (typeof string === 'string') {
-			string = new OnigString(this._onigBinding, string);
+			string = new OnigString(string);
 			const result = this._findNextMatchSync(string, startPosition);
 			string.dispose();
 			return result;
@@ -280,8 +288,6 @@ class OnigScanner implements IOnigScanner {
 	}
 }
 
-let onigBinding: IOnigBinding | null = null;
-let initCalled = false;
 
 type WASMLoader = (importObject: Record<string, Record<string, WebAssembly.ImportValue>> | undefined) => Promise<WebAssembly.WebAssemblyInstantiatedSource>;
 
@@ -304,6 +310,7 @@ function _loadWASM(loader: WASMLoader, resolve: () => void, reject: (err: any) =
 	}
 }
 
+let initCalled = false;
 export function loadWASM(data: ArrayBuffer | Response): Promise<void> {
 	if (initCalled) {
 		throw new Error(`Cannot invoke loadWASM more than once.`);
@@ -329,15 +336,9 @@ export function loadWASM(data: ArrayBuffer | Response): Promise<void> {
 }
 
 export function createOnigString(str: string) {
-	if (!onigBinding) {
-		throw new Error(`Must invoke loadWASM first.`);
-	}
-	return new OnigString(onigBinding, str);
+	return new OnigString(str);
 }
 
 export function createOnigScanner(patterns: string[]) {
-	if (!onigBinding) {
-		throw new Error(`Must invoke loadWASM first.`);
-	}
-	return new OnigScanner(onigBinding, patterns);
+	return new OnigScanner(patterns);
 }
