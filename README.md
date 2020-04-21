@@ -1,6 +1,6 @@
 # VS Code Oniguruma
 
-Oniguruma bindings for VS Code. This library is used in VS Code and is not intended to be general bindings for Oniguruma.
+Oniguruma bindings for VS Code. This library is used in VS Code and is not intended to grow to have general Oniguruma WASM bindings.
 
 ## Installing
 
