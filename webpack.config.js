@@ -11,6 +11,7 @@ module.exports = {
 	output: {
 		library: 'onig',
 		libraryTarget: 'umd',
+		globalObject: 'this',
 		path: path.resolve(__dirname, 'release')
 	},
 	resolve: {

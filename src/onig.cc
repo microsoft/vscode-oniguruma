@@ -178,9 +178,11 @@ int freeOnigScanner(OnigScanner* scanner) {
   return 0;
 }
 
+#define MAX_REGIONS 1000
+
 EMSCRIPTEN_KEEPALIVE
 int findNextOnigScannerMatch(OnigScanner* scanner, OnigString* str, int startPosition) {
-  static int encodedResult[202];
+  static int encodedResult[2 * (1 + MAX_REGIONS)];
   int bestLocation = 0;
   int bestResultIndex = 0;
   OnigRegion* bestResult = NULL;
@@ -205,7 +207,7 @@ int findNextOnigScannerMatch(OnigScanner* scanner, OnigString* str, int startPos
     }
   }
 
-  if (bestResult == NULL || bestResult->num_regs > 100) {
+  if (bestResult == NULL || bestResult->num_regs > MAX_REGIONS) {
     return 0;
   }
 
