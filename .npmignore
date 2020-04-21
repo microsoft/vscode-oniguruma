@@ -1,0 +1,13 @@
+/.devcontainer/
+/.vscode/
+/deps/
+/node_modules/
+/out/
+/scripts/
+/src/
+/.gitignore
+/.gitmodules
+/.npmignore
+/SECURITY.md
+/tsconfig.json
+/webpack.config.js
