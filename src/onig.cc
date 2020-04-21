@@ -39,6 +39,24 @@ char* getLastOnigError()
   return s;
 }
 
+#define MAX_REGIONS 1000
+
+int encodeOnigRegion(OnigRegion *result, int index) {
+  static int encodedResult[2 * (1 + MAX_REGIONS)];
+  int i;
+  if (result == NULL || result->num_regs > MAX_REGIONS) {
+    return 0;
+  }
+
+  encodedResult[0] = index;
+  encodedResult[1] = result->num_regs;
+  for (i = 0; i < result->num_regs; i++) {
+    encodedResult[2 * i + 2] = result->beg[i];
+    encodedResult[2 * i + 3] = result->end[i];
+  }
+  return (int)encodedResult;
+}
+
 #pragma region OnigString
 
 EMSCRIPTEN_KEEPALIVE
@@ -148,7 +166,7 @@ OnigRegion* searchOnigRegExp(OnigRegExp* regex, OnigString* str, int position) {
 
 EMSCRIPTEN_KEEPALIVE
 int createOnigScanner(unsigned char** patterns, int* lengths, int count) {
-  int i;
+  int i, j;
   OnigRegExp** regexes;
   OnigScanner* scanner;
 
@@ -157,6 +175,10 @@ int createOnigScanner(unsigned char** patterns, int* lengths, int count) {
   for (i = 0; i < count; i++) {
     regexes[i] = createOnigRegExp(patterns[i], lengths[i]);
     if (regexes[i] == NULL) {
+      for (j = 0; j < i; j++) {
+        freeOnigRegExp(regexes[i]);
+      }
+      free(regexes);
       return 0;
     }
   }
@@ -178,11 +200,8 @@ int freeOnigScanner(OnigScanner* scanner) {
   return 0;
 }
 
-#define MAX_REGIONS 1000
-
 EMSCRIPTEN_KEEPALIVE
 int findNextOnigScannerMatch(OnigScanner* scanner, OnigString* str, int startPosition) {
-  static int encodedResult[2 * (1 + MAX_REGIONS)];
   int bestLocation = 0;
   int bestResultIndex = 0;
   OnigRegion* bestResult = NULL;
@@ -207,17 +226,67 @@ int findNextOnigScannerMatch(OnigScanner* scanner, OnigString* str, int startPos
     }
   }
 
-  if (bestResult == NULL || bestResult->num_regs > MAX_REGIONS) {
+  if (bestResult == NULL) {
     return 0;
   }
 
-  encodedResult[0] = bestResultIndex;
-  encodedResult[1] = bestResult->num_regs;
-  for (i = 0; i < bestResult->num_regs; i++) {
-    encodedResult[2 * i + 2] = bestResult->beg[i];
-    encodedResult[2 * i + 3] = bestResult->end[i];
+  return encodeOnigRegion(bestResult, bestResultIndex);
+}
+
+#pragma endregion
+
+#pragma region OnigRegSet
+
+void freeRegs(regex_t** regs, int count) {
+  int i;
+  for (i = 0; i < count; i++) {
+    onig_free(regs[i]);
   }
-  return (int)encodedResult;
+  free(regs);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int createOnigRegSet(unsigned char** patterns, int* lengths, int count) {
+  int i;
+  regex_t** regs;
+  OnigRegSet* rset;
+
+  regs = (regex_t**)malloc(sizeof(regex_t*) * count);
+
+  for (i = 0; i < count; i++) {
+    lastOnigStatus = onig_new(&(regs[i]), patterns[i], patterns[i] + lengths[i],
+                              ONIG_OPTION_CAPTURE_GROUP, ONIG_ENCODING_UTF8,
+                              ONIG_SYNTAX_DEFAULT, &lastOnigErrorInfo);
+    if (lastOnigStatus != ONIG_NORMAL) {
+      freeRegs(regs, i);
+      return 0;
+    }
+  }
+
+  onig_regset_new(&rset, count, regs);
+  free(regs);
+  return (int)rset;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void freeOnigRegSet(OnigRegSet* rset) {
+  onig_regset_free(rset);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int findNextOnigRegSetMatch(OnigRegSet* rset, unsigned char* data, int length, int position) {
+  int status;
+  int rmatch_pos;
+  OnigRegion* result;
+
+  status = onig_regset_search(rset, data, data + length, data + position, data + length,
+                              ONIG_REGSET_POSITION_LEAD, ONIG_OPTION_NONE, &rmatch_pos);
+
+  if (status < 0) {
+    return 0;
+  }
+
+  return encodeOnigRegion(onig_regset_get_region(rset, status), status);
 }
 
 #pragma endregion

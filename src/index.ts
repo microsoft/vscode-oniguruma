@@ -5,6 +5,8 @@
 import { IOnigBinding, Pointer, IOnigMatch, IOnigCaptureIndex, OnigScanner as IOnigScanner, OnigString as IOnigString } from './types';
 import OnigasmModuleFactory from './onig';
 
+const USE_REG_SET = true;
+
 let onigBinding: IOnigBinding | null = null;
 
 function throwLastOnigError(onigBinding: IOnigBinding): void {
@@ -158,7 +160,7 @@ export class OnigString implements IOnigString {
 	public readonly utf8Length: number;
 	public readonly utf16OffsetToUtf8: Uint32Array | null;
 	public readonly utf8OffsetToUtf16: Uint32Array | null;
-	private readonly _strPtr: Pointer;
+	public readonly strPtr: Pointer;
 	public readonly ptr: Pointer;
 
 	constructor(str: string) {
@@ -172,8 +174,12 @@ export class OnigString implements IOnigString {
 		this.utf8Length = utfString.utf8Length;
 		this.utf16OffsetToUtf8 = utfString.utf16OffsetToUtf8;
 		this.utf8OffsetToUtf16 = utfString.utf8OffsetToUtf16;
-		this._strPtr = utfString.createString(onigBinding);
-		this.ptr = onigBinding._createOnigString(this._strPtr, this.utf8Length);
+		this.strPtr = utfString.createString(onigBinding);
+		if (!USE_REG_SET) {
+			this.ptr = onigBinding._createOnigString(this.strPtr, this.utf8Length);
+		} else {
+			this.ptr = 0;
+		}
 	}
 
 	public convertUtf8OffsetToUtf16(utf8Offset: number): number {
@@ -203,8 +209,10 @@ export class OnigString implements IOnigString {
 	}
 
 	public dispose(): void {
-		this._onigBinding._freeOnigString(this.ptr);
-		this._onigBinding._free(this._strPtr);
+		if (!USE_REG_SET) {
+			this._onigBinding._freeOnigString(this.ptr);
+		}
+		this._onigBinding._free(this.strPtr);
 	}
 }
 
@@ -230,7 +238,12 @@ export class OnigScanner implements IOnigScanner {
 		const strLenPtr = onigBinding._malloc(4 * patterns.length);
 		onigBinding.HEAPU32.set(strLenArr, strLenPtr / 4);
 
-		const scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
+		let scannerPtr: Pointer;
+		if (!USE_REG_SET) {
+			scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
+		} else {
+			scannerPtr = onigBinding._createOnigRegSet(strPtrsPtr, strLenPtr, patterns.length);
+		}
 
 		for (let i = 0, len = patterns.length; i < len; i++) {
 			onigBinding._free(strPtrsArr[i]);
@@ -247,7 +260,11 @@ export class OnigScanner implements IOnigScanner {
 	}
 
 	public dispose(): void {
-		this._onigBinding._freeOnigScanner(this._ptr);
+		if (!USE_REG_SET) {
+			this._onigBinding._freeOnigScanner(this._ptr);
+		} else {
+			this._onigBinding._freeOnigRegSet(this._ptr);
+		}
 	}
 
 	public findNextMatchSync(string: string | OnigString, startPosition: number): IOnigMatch | null {
@@ -262,7 +279,12 @@ export class OnigScanner implements IOnigScanner {
 
 	private _findNextMatchSync(string: OnigString, startPosition: number): IOnigMatch | null {
 		const onigBinding = this._onigBinding;
-		const resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.ptr, string.convertUtf16OffsetToUtf8(startPosition));
+		let resultPtr: number;
+		if (!USE_REG_SET) {
+			resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.ptr, string.convertUtf16OffsetToUtf8(startPosition));
+		} else {
+			resultPtr = onigBinding._findNextOnigRegSetMatch(this._ptr, string.strPtr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+		}
 		if (resultPtr === 0) {
 			// no match
 			return null;
