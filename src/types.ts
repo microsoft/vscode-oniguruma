@@ -13,12 +13,6 @@ export interface IOnigBinding {
 	UTF8ToString(ptr: Pointer): string;
 
 	_getLastOnigError(): Pointer;
-	_createOnigString(ptr: Pointer, len: number): Pointer;
-	_freeOnigString(ptr: Pointer): void;
-	_createOnigScanner(strPtrsPtr: Pointer, strLenPtr: Pointer, count: number): Pointer;
-	_freeOnigScanner(ptr: Pointer): void;
-	_findNextOnigScannerMatch(scanner: Pointer, str: Pointer, startPosition: number): number;
-
 	_createOnigRegSet(strPtrsPtr: Pointer, strLenPtr: Pointer, count: number): Pointer;
 	_freeOnigRegSet(ptr: Pointer): void;
 	_findNextOnigRegSetMatch(regset: Pointer, ptr: Pointer, len: number, position: number): number;
