@@ -20,7 +20,7 @@ See [the main.d.ts file](./main.d.ts)
 * Open the repository using the `Remote - Containers` extension, which will automatically create a docker container with the correct emscripten version and environment for building the WASM.
 * Run `npm install`.
 * Compile the oniguruma library with `npm run build-onig` (needed just once).
-* Compile the WASM with `npm run build-wasm` (needed every time the `onig.cc` file is changed).
+* Compile the `.wasm` with `npm run build-wasm` (needed every time the `onig.cc` file is changed).
 * Compile the `.js` with `npm run build-tsc` or watch with `npm run watch-tsc` (needed every time the `.ts` files are changed).
 * Package for releasing as UMD with `npm run package`
 

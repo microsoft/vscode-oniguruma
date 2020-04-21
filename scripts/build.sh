@@ -2,7 +2,7 @@
 
 emcc -O2 \
     deps/oniguruma/src/.libs/libonig.so \
-    src/onig.cc\
+    src/onig.cc \
     -Isrc -Ideps/oniguruma/src \
     -o out/onig.js \
     -s ENVIRONMENT=shell \
