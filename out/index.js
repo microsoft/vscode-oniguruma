@@ -7,6 +7,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const onig_1 = __importDefault(require("./onig"));
+const USE_REG_SET = true;
 let onigBinding = null;
 function throwLastOnigError(onigBinding) {
     throw new Error(onigBinding.UTF8ToString(onigBinding._getLastOnigError()));
@@ -148,6 +149,12 @@ class OnigString {
         this.utf16OffsetToUtf8 = utfString.utf16OffsetToUtf8;
         this.utf8OffsetToUtf16 = utfString.utf8OffsetToUtf16;
         this.strPtr = utfString.createString(onigBinding);
+        if (!USE_REG_SET) {
+            this.ptr = onigBinding._createOnigString(this.strPtr, this.utf8Length);
+        }
+        else {
+            this.ptr = 0;
+        }
     }
     convertUtf8OffsetToUtf16(utf8Offset) {
         if (this.utf8OffsetToUtf16) {
@@ -174,6 +181,9 @@ class OnigString {
         return utf16Offset;
     }
     dispose() {
+        if (!USE_REG_SET) {
+            this._onigBinding._freeOnigString(this.ptr);
+        }
         this._onigBinding._free(this.strPtr);
     }
 }
@@ -194,7 +204,13 @@ class OnigScanner {
         onigBinding.HEAPU32.set(strPtrsArr, strPtrsPtr / 4);
         const strLenPtr = onigBinding._malloc(4 * patterns.length);
         onigBinding.HEAPU32.set(strLenArr, strLenPtr / 4);
-        const scannerPtr = onigBinding._createOnigRegSet(strPtrsPtr, strLenPtr, patterns.length);
+        let scannerPtr;
+        if (!USE_REG_SET) {
+            scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
+        }
+        else {
+            scannerPtr = onigBinding._createOnigRegSet(strPtrsPtr, strLenPtr, patterns.length);
+        }
         for (let i = 0, len = patterns.length; i < len; i++) {
             onigBinding._free(strPtrsArr[i]);
         }
@@ -207,7 +223,12 @@ class OnigScanner {
         this._ptr = scannerPtr;
     }
     dispose() {
-        this._onigBinding._freeOnigRegSet(this._ptr);
+        if (!USE_REG_SET) {
+            this._onigBinding._freeOnigScanner(this._ptr);
+        }
+        else {
+            this._onigBinding._freeOnigRegSet(this._ptr);
+        }
     }
     findNextMatchSync(string, startPosition) {
         if (typeof string === 'string') {
@@ -220,7 +241,13 @@ class OnigScanner {
     }
     _findNextMatchSync(string, startPosition) {
         const onigBinding = this._onigBinding;
-        const resultPtr = onigBinding._findNextOnigRegSetMatch(this._ptr, string.strPtr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+        let resultPtr;
+        if (!USE_REG_SET) {
+            resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.ptr, string.convertUtf16OffsetToUtf8(startPosition));
+        }
+        else {
+            resultPtr = onigBinding._findNextOnigRegSetMatch(this._ptr, string.strPtr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+        }
         if (resultPtr === 0) {
             // no match
             return null;
