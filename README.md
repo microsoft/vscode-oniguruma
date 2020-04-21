@@ -44,3 +44,5 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## License
 [MIT](https://github.com/microsoft/vscode-oniguruma/blob/master/LICENSE)
+
+This project incorporates material from other projects. Please see [ThirdPartyNotices.txt](https://github.com/microsoft/vscode-oniguruma/blob/master/ThirdPartyNotices.txt)
