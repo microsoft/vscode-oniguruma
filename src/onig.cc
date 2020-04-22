@@ -18,6 +18,7 @@ typedef struct OnigRegExp_ {
 } OnigRegExp;
 
 typedef struct OnigScanner_ {
+  OnigRegSet* rset;
   OnigRegExp** regexes;
   int count;
 } OnigScanner;
@@ -88,7 +89,7 @@ OnigRegExp* createOnigRegExp(unsigned char* data, int length) {
 }
 
 void freeOnigRegExp(OnigRegExp* regex) {
-  onig_free(regex->regex);
+  // regex->regex will be freed separately / as part of the regset
   onig_region_free(regex->region, 1);
   free(regex);
 }
@@ -140,22 +141,33 @@ EMSCRIPTEN_KEEPALIVE
 int createOnigScanner(unsigned char** patterns, int* lengths, int count) {
   int i, j;
   OnigRegExp** regexes;
+  regex_t** regs;
+  OnigRegSet* rset;
   OnigScanner* scanner;
 
   regexes = (OnigRegExp**)malloc(sizeof(OnigRegExp*) * count);
+  regs = (regex_t**)malloc(sizeof(regex_t*) * count);
 
   for (i = 0; i < count; i++) {
     regexes[i] = createOnigRegExp(patterns[i], lengths[i]);
+    regs[i] = regexes[i]->regex;
     if (regexes[i] == NULL) {
+      // parsing this regex failed, so clean up all the ones created so far
       for (j = 0; j < i; j++) {
+        free(regs[i]);
         freeOnigRegExp(regexes[i]);
       }
       free(regexes);
+      free(regs);
       return 0;
     }
   }
 
+  onig_regset_new(&rset, count, regs);
+  free(regs);
+
   scanner = (OnigScanner*)malloc(sizeof(OnigScanner));
+  scanner->rset = rset;
   scanner->regexes = regexes;
   scanner->count = count;
   return (int)scanner;
@@ -168,6 +180,7 @@ int freeOnigScanner(OnigScanner* scanner) {
     freeOnigRegExp(scanner->regexes[i]);
   }
   free(scanner->regexes);
+  onig_regset_free(scanner->rset);
   free(scanner);
   return 0;
 }
