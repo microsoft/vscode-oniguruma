@@ -155,6 +155,8 @@ class UtfString {
 export class OnigString implements IOnigString {
 
 	private static LAST_ID = 0;
+	private static _sharedPtr: Pointer = 0; // a pointer to a string of 10000 bytes
+	private static _sharedPtrInUse: boolean = false;
 
 	public readonly id = (++OnigString.LAST_ID);
 	private readonly _onigBinding: IOnigBinding;
@@ -176,7 +178,17 @@ export class OnigString implements IOnigString {
 		this.utf8Length = utfString.utf8Length;
 		this.utf16OffsetToUtf8 = utfString.utf16OffsetToUtf8;
 		this.utf8OffsetToUtf16 = utfString.utf8OffsetToUtf16;
-		this.ptr = utfString.createString(onigBinding);
+
+		if (this.utf8Length < 10000 && !OnigString._sharedPtrInUse) {
+			if (!OnigString._sharedPtr) {
+				OnigString._sharedPtr = onigBinding._malloc(10000);
+			}
+			OnigString._sharedPtrInUse = true;
+			onigBinding.HEAPU8.set(utfString.utf8Value, OnigString._sharedPtr);
+			this.ptr = OnigString._sharedPtr;
+		} else {
+			this.ptr = utfString.createString(onigBinding);
+		}
 	}
 
 	public convertUtf8OffsetToUtf16(utf8Offset: number): number {
@@ -206,7 +218,11 @@ export class OnigString implements IOnigString {
 	}
 
 	public dispose(): void {
-		this._onigBinding._free(this.ptr);
+		if (this.ptr === OnigString._sharedPtr) {
+			OnigString._sharedPtrInUse = false;
+		} else {
+			this._onigBinding._free(this.ptr);
+		}
 	}
 }
 

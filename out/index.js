@@ -149,7 +149,17 @@ class OnigString {
         this.utf8Length = utfString.utf8Length;
         this.utf16OffsetToUtf8 = utfString.utf16OffsetToUtf8;
         this.utf8OffsetToUtf16 = utfString.utf8OffsetToUtf16;
-        this.ptr = utfString.createString(onigBinding);
+        if (this.utf8Length < 10000 && !OnigString._sharedPtrInUse) {
+            if (!OnigString._sharedPtr) {
+                OnigString._sharedPtr = onigBinding._malloc(10000);
+            }
+            OnigString._sharedPtrInUse = true;
+            onigBinding.HEAPU8.set(utfString.utf8Value, OnigString._sharedPtr);
+            this.ptr = OnigString._sharedPtr;
+        }
+        else {
+            this.ptr = utfString.createString(onigBinding);
+        }
     }
     convertUtf8OffsetToUtf16(utf8Offset) {
         if (this.utf8OffsetToUtf16) {
@@ -176,11 +186,18 @@ class OnigString {
         return utf16Offset;
     }
     dispose() {
-        this._onigBinding._free(this.ptr);
+        if (this.ptr === OnigString._sharedPtr) {
+            OnigString._sharedPtrInUse = false;
+        }
+        else {
+            this._onigBinding._free(this.ptr);
+        }
     }
 }
 exports.OnigString = OnigString;
 OnigString.LAST_ID = 0;
+OnigString._sharedPtr = 0; // a pointer to a string of 10000 bytes
+OnigString._sharedPtrInUse = false;
 class OnigScanner {
     constructor(patterns) {
         if (!onigBinding) {
