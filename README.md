@@ -17,6 +17,7 @@ See [the main.d.ts file](./main.d.ts)
 * Clone the repository.
 * Run `git submodule init`.
 * Run `git submodule update`.
+* Run `git apply oniguruma.patch` - This is necessary until https://github.com/kkos/oniguruma/issues/192 is fixed.
 * Open the repository using the `Remote - Containers` extension, which will automatically create a docker container with the correct emscripten version and environment for building the WASM.
 * Run `npm install`.
 * Compile the oniguruma library with `npm run build-onig` (needed just once).
