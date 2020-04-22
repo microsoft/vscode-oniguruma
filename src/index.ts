@@ -5,7 +5,7 @@
 import { IOnigBinding, Pointer, IOnigMatch, IOnigCaptureIndex, OnigScanner as IOnigScanner, OnigString as IOnigString } from './types';
 import OnigasmModuleFactory from './onig';
 
-const USE_REG_SET = true;
+let USE_REG_SET = false;
 
 let onigBinding: IOnigBinding | null = null;
 
@@ -333,11 +333,12 @@ function _loadWASM(loader: WASMLoader, resolve: () => void, reject: (err: any) =
 }
 
 let initCalled = false;
-export function loadWASM(data: ArrayBuffer | Response): Promise<void> {
+export function loadWASM(data: ArrayBuffer | Response, useRegSet: boolean = USE_REG_SET): Promise<void> {
 	if (initCalled) {
 		throw new Error(`Cannot invoke loadWASM more than once.`);
 	}
 	initCalled = true;
+	USE_REG_SET = useRegSet;
 
 	let resolve: () => void;
 	let reject: (err: any) => void;

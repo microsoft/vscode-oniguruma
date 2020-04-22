@@ -7,7 +7,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const onig_1 = __importDefault(require("./onig"));
-const USE_REG_SET = true;
+let USE_REG_SET = false;
 let onigBinding = null;
 function throwLastOnigError(onigBinding) {
     throw new Error(onigBinding.UTF8ToString(onigBinding._getLastOnigError()));
@@ -292,11 +292,12 @@ function _loadWASM(loader, resolve, reject) {
     }
 }
 let initCalled = false;
-function loadWASM(data) {
+function loadWASM(data, useRegSet = USE_REG_SET) {
     if (initCalled) {
         throw new Error(`Cannot invoke loadWASM more than once.`);
     }
     initCalled = true;
+    USE_REG_SET = useRegSet;
     let resolve;
     let reject;
     const result = new Promise((_resolve, _reject) => { resolve = _resolve; reject = _reject; });

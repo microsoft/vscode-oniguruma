@@ -2,7 +2,7 @@
  * Copyright (C) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------*/
 
-export function loadWASM(data: ArrayBuffer | Response): Promise<void>;
+export function loadWASM(data: ArrayBuffer | Response, useRegSet?: boolean): Promise<void>;
 export function createOnigString(str: string): OnigString;
 export function createOnigScanner(patterns: string[]): OnigScanner;
 
