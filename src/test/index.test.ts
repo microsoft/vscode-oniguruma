@@ -24,6 +24,8 @@ testLib('simple1', (t) => {
 	const s = new OnigString('Hello world!');
 	t.deepEqual(scanner.findNextMatchSync(s, 0), { index: 0, captureIndices: [{ start: 1, end: 4, length: 3 }] });
 	t.deepEqual(scanner.findNextMatchSync(s, 2), { index: 1, captureIndices: [{ start: 6, end: 8, length: 2 }] });
+	s.dispose();
+	scanner.dispose();
 });
 
 testLib('simple2', (t) => {
@@ -33,14 +35,17 @@ testLib('simple2', (t) => {
 	t.deepEqual(scanner.findNextMatchSync('xxaxxbxxc', 4), { index: 1, captureIndices: [{ start: 5, end: 6, length: 1 }] });
 	t.deepEqual(scanner.findNextMatchSync('xxaxxbxxc', 7), { index: 2, captureIndices: [{ start: 8, end: 9, length: 1 }] });
 	t.deepEqual(scanner.findNextMatchSync('xxaxxbxxc', 9), null);
+	scanner.dispose();
 });
 
 testLib('unicode1', (t) => {
 	const scanner1 = new OnigScanner(['1', '2']);
 	t.deepEqual(scanner1.findNextMatchSync('ab…cde21', 5), { index: 1, captureIndices: [{ start: 6, end: 7, length: 1 }] });
+	scanner1.dispose();
 
 	const scanner2 = new OnigScanner(['\"'])
 	t.deepEqual(scanner2.findNextMatchSync('{"…": 1}', 1), { index: 0, captureIndices: [{ start: 1, end: 2, length: 1 }] });
+	scanner2.dispose();
 });
 
 testLib('unicode2', (t) => {
@@ -50,11 +55,13 @@ testLib('unicode2', (t) => {
 	t.deepEqual(scanner.findNextMatchSync('a💻bYX', 3), { index: 0, captureIndices: [{ start: 4, end: 5, length: 1 }] });
 	t.deepEqual(scanner.findNextMatchSync('a💻bYX', 4), { index: 0, captureIndices: [{ start: 4, end: 5, length: 1 }] });
 	t.deepEqual(scanner.findNextMatchSync('a💻bYX', 5), { index: 1, captureIndices: [{ start: 5, end: 6, length: 1 }] });
+	scanner.dispose();
 });
 
 testLib('unicode3', (t) => {
 	const scanner = new OnigScanner(['Возврат'])
 	t.deepEqual(scanner.findNextMatchSync('Возврат long_var_name;', 0), { index: 0, captureIndices: [{ start: 0, end: 7, length: 7 }] });
+	scanner.dispose();
 });
 
 testLib('unicode4', (t) => {
@@ -68,12 +75,14 @@ testLib('unicode4', (t) => {
 	// These are actually valid, just testing the min & max
 	t.deepEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xd800)}${String.fromCharCode(0xdc00)}X`, 2), { index: 0, captureIndices: [{ start: 3, end: 4, length: 1 }] });
 	t.deepEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xdbff)}${String.fromCharCode(0xdfff)}X`, 2), { index: 0, captureIndices: [{ start: 3, end: 4, length: 1 }] });
+	scanner.dispose();
 });
 
 testLib('out of bounds', (t) => {
 	const scanner = new OnigScanner(['X'])
 	t.deepEqual(scanner.findNextMatchSync(`X💻X`, -1000), { index: 0, captureIndices: [{ start: 0, end: 1, length: 1 }] });
 	t.deepEqual(scanner.findNextMatchSync(`X💻X`, 1000), null);
+	scanner.dispose();
 });
 
 testLib('regex with \\G', (t) => {
@@ -81,10 +90,14 @@ testLib('regex with \\G', (t) => {
 	const scanner = new OnigScanner(['\\G-and']);
 	t.deepEqual(scanner.findNextMatchSync(str, 0), null);
 	t.deepEqual(scanner.findNextMatchSync(str, 5), { index: 0, captureIndices: [{ start: 5, end: 9, length: 4 }] });
+	scanner.dispose();
+	str.dispose();
 });
 
 testLib('kkos/oniguruma#192', (t) => {
 	const str = new OnigString("    while (i < len && f(array[i]))");
 	const scanner = new OnigScanner(["(?x)\n  (?<!\\+\\+|--)(?<=[({\\[,?=>:*]|&&|\\|\\||\\?|\\*\\/|^await|[^\\._$[:alnum:]]await|^return|[^\\._$[:alnum:]]return|^default|[^\\._$[:alnum:]]default|^yield|[^\\._$[:alnum:]]yield|^)\\s*\n  (?!<\\s*[_$[:alpha:]][_$[:alnum:]]*((\\s+extends\\s+[^=>])|,)) # look ahead is not type parameter of arrow\n  (?=(<)\\s*(?:([_$[:alpha:]][-_$[:alnum:].]*)(?<!\\.|-)(:))?((?:[a-z][a-z0-9]*|([_$[:alpha:]][-_$[:alnum:].]*))(?<!\\.|-))(?=((<\\s*)|(\\s+))(?!\\?)|\\/?>))"]);
 	t.deepEqual(scanner.findNextMatchSync(str, 0), null);
+	scanner.dispose();
+	str.dispose();
 });
