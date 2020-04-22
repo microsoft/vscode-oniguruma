@@ -5,8 +5,6 @@
 import { IOnigBinding, Pointer, IOnigMatch, IOnigCaptureIndex, OnigScanner as IOnigScanner, OnigString as IOnigString } from './types';
 import OnigasmModuleFactory from './onig';
 
-let USE_REG_SET = false;
-
 let onigBinding: IOnigBinding | null = null;
 
 function throwLastOnigError(onigBinding: IOnigBinding): void {
@@ -248,12 +246,7 @@ export class OnigScanner implements IOnigScanner {
 		const strLenPtr = onigBinding._malloc(4 * patterns.length);
 		onigBinding.HEAPU32.set(strLenArr, strLenPtr / 4);
 
-		let scannerPtr: Pointer;
-		if (!USE_REG_SET) {
-			scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
-		} else {
-			scannerPtr = onigBinding._createOnigRegSet(strPtrsPtr, strLenPtr, patterns.length);
-		}
+		const scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
 
 		for (let i = 0, len = patterns.length; i < len; i++) {
 			onigBinding._free(strPtrsArr[i]);
@@ -270,11 +263,7 @@ export class OnigScanner implements IOnigScanner {
 	}
 
 	public dispose(): void {
-		if (!USE_REG_SET) {
-			this._onigBinding._freeOnigScanner(this._ptr);
-		} else {
-			this._onigBinding._freeOnigRegSet(this._ptr);
-		}
+		this._onigBinding._freeOnigScanner(this._ptr);
 	}
 
 	public findNextMatchSync(string: string | OnigString, startPosition: number): IOnigMatch | null {
@@ -289,12 +278,7 @@ export class OnigScanner implements IOnigScanner {
 
 	private _findNextMatchSync(string: OnigString, startPosition: number): IOnigMatch | null {
 		const onigBinding = this._onigBinding;
-		let resultPtr: number;
-		if (!USE_REG_SET) {
-			resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
-		} else {
-			resultPtr = onigBinding._findNextOnigRegSetMatch(this._ptr, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
-		}
+		const resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
 		if (resultPtr === 0) {
 			// no match
 			return null;
@@ -343,12 +327,11 @@ function _loadWASM(loader: WASMLoader, resolve: () => void, reject: (err: any) =
 }
 
 let initCalled = false;
-export function loadWASM(data: ArrayBuffer | Response, useRegSet: boolean = USE_REG_SET): Promise<void> {
+export function loadWASM(data: ArrayBuffer | Response): Promise<void> {
 	if (initCalled) {
 		throw new Error(`Cannot invoke loadWASM more than once.`);
 	}
 	initCalled = true;
-	USE_REG_SET = useRegSet;
 
 	let resolve: () => void;
 	let reject: (err: any) => void;

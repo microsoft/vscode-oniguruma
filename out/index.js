@@ -7,7 +7,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const onig_1 = __importDefault(require("./onig"));
-let USE_REG_SET = false;
 let onigBinding = null;
 function throwLastOnigError(onigBinding) {
     throw new Error(onigBinding.UTF8ToString(onigBinding._getLastOnigError()));
@@ -214,13 +213,7 @@ class OnigScanner {
         onigBinding.HEAPU32.set(strPtrsArr, strPtrsPtr / 4);
         const strLenPtr = onigBinding._malloc(4 * patterns.length);
         onigBinding.HEAPU32.set(strLenArr, strLenPtr / 4);
-        let scannerPtr;
-        if (!USE_REG_SET) {
-            scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
-        }
-        else {
-            scannerPtr = onigBinding._createOnigRegSet(strPtrsPtr, strLenPtr, patterns.length);
-        }
+        const scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
         for (let i = 0, len = patterns.length; i < len; i++) {
             onigBinding._free(strPtrsArr[i]);
         }
@@ -233,12 +226,7 @@ class OnigScanner {
         this._ptr = scannerPtr;
     }
     dispose() {
-        if (!USE_REG_SET) {
-            this._onigBinding._freeOnigScanner(this._ptr);
-        }
-        else {
-            this._onigBinding._freeOnigRegSet(this._ptr);
-        }
+        this._onigBinding._freeOnigScanner(this._ptr);
     }
     findNextMatchSync(string, startPosition) {
         if (typeof string === 'string') {
@@ -251,13 +239,7 @@ class OnigScanner {
     }
     _findNextMatchSync(string, startPosition) {
         const onigBinding = this._onigBinding;
-        let resultPtr;
-        if (!USE_REG_SET) {
-            resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
-        }
-        else {
-            resultPtr = onigBinding._findNextOnigRegSetMatch(this._ptr, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
-        }
+        const resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
         if (resultPtr === 0) {
             // no match
             return null;
@@ -302,12 +284,11 @@ function _loadWASM(loader, resolve, reject) {
     }
 }
 let initCalled = false;
-function loadWASM(data, useRegSet = USE_REG_SET) {
+function loadWASM(data) {
     if (initCalled) {
         throw new Error(`Cannot invoke loadWASM more than once.`);
     }
     initCalled = true;
-    USE_REG_SET = useRegSet;
     let resolve;
     let reject;
     const result = new Promise((_resolve, _reject) => { resolve = _resolve; reject = _reject; });
