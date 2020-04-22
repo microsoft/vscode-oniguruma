@@ -154,13 +154,15 @@ class UtfString {
 
 export class OnigString implements IOnigString {
 
+	private static LAST_ID = 0;
+
+	public readonly id = (++OnigString.LAST_ID);
 	private readonly _onigBinding: IOnigBinding;
 	public readonly content: string;
 	public readonly utf16Length: number;
 	public readonly utf8Length: number;
 	public readonly utf16OffsetToUtf8: Uint32Array | null;
 	public readonly utf8OffsetToUtf16: Uint32Array | null;
-	public readonly strPtr: Pointer;
 	public readonly ptr: Pointer;
 
 	constructor(str: string) {
@@ -174,12 +176,7 @@ export class OnigString implements IOnigString {
 		this.utf8Length = utfString.utf8Length;
 		this.utf16OffsetToUtf8 = utfString.utf16OffsetToUtf8;
 		this.utf8OffsetToUtf16 = utfString.utf8OffsetToUtf16;
-		this.strPtr = utfString.createString(onigBinding);
-		if (!USE_REG_SET) {
-			this.ptr = onigBinding._createOnigString(this.strPtr, this.utf8Length);
-		} else {
-			this.ptr = 0;
-		}
+		this.ptr = utfString.createString(onigBinding);
 	}
 
 	public convertUtf8OffsetToUtf16(utf8Offset: number): number {
@@ -209,10 +206,7 @@ export class OnigString implements IOnigString {
 	}
 
 	public dispose(): void {
-		if (!USE_REG_SET) {
-			this._onigBinding._freeOnigString(this.ptr);
-		}
-		this._onigBinding._free(this.strPtr);
+		this._onigBinding._free(this.ptr);
 	}
 }
 
@@ -281,9 +275,9 @@ export class OnigScanner implements IOnigScanner {
 		const onigBinding = this._onigBinding;
 		let resultPtr: number;
 		if (!USE_REG_SET) {
-			resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.ptr, string.convertUtf16OffsetToUtf8(startPosition));
+			resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
 		} else {
-			resultPtr = onigBinding._findNextOnigRegSetMatch(this._ptr, string.strPtr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+			resultPtr = onigBinding._findNextOnigRegSetMatch(this._ptr, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
 		}
 		if (resultPtr === 0) {
 			// no match
