@@ -5,7 +5,7 @@ Oniguruma bindings for VS Code. This library is used in VS Code and is not inten
 ## Installing
 
 ```sh
-npm install vscode-oniguruma-wasm
+npm install vscode-oniguruma
 ```
 
 ## API doc
@@ -47,3 +47,7 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 [MIT](https://github.com/microsoft/vscode-oniguruma/blob/master/LICENSE)
 
 This project incorporates material from other projects. Please see [ThirdPartyNotices.txt](https://github.com/microsoft/vscode-oniguruma/blob/master/ThirdPartyNotices.txt)
+
+## Thank you
+
+Special thank you to [@lieene](https://github.com/lieene) for transfering the npm package name `vscode-oniguruma` to this project.

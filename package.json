@@ -1,5 +1,5 @@
 {
-  "name": "vscode-oniguruma-wasm",
+  "name": "vscode-oniguruma",
   "version": "1.1.0",
   "description": "VSCode oniguruma bindings",
   "author": {
