@@ -245,13 +245,17 @@ int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned c
   OnigRegion* result;
   int i;
   int location;
+  double startTime;
+  double elapsedTime;
 
   for (i = 0; i < scanner->count; i++) {
     printf("- searchOnigRegExp: %.*s\n", scanner->regexes[i]->strLength, scanner->regexes[i]->strData);
+    startTime = emscripten_get_now();
     result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position);
+    elapsedTime = emscripten_get_now() - startTime;
     if (result != NULL && result->num_regs > 0) {
       location = result->beg[0];
-      printf("|- matched at byte offset %d\n", location);
+      printf("|- matched after %.3f ms at byte offset %d\n", elapsedTime, location);
 
       if (bestResult == NULL || location < bestLocation) {
         bestLocation = location;
@@ -263,7 +267,7 @@ int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned c
         break;
       }
     } else {
-      printf("|- did not match\n");
+      printf("|- did not match after %.3f ms\n", elapsedTime);
     }
   }
 

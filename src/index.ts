@@ -317,6 +317,12 @@ function _loadWASM(loader: WASMLoader, resolve: () => void, reject: (err: any) =
 	const { log, warn, error } = console
 	OnigasmModuleFactory({
 		instantiateWasm: (importObject, callback) => {
+			if (typeof performance === 'undefined') {
+				// performance.now() is not available in this environment, so use Date.now()
+				const get_now = () => Date.now();
+				(<any>importObject).env.emscripten_get_now = get_now;
+				(<any>importObject).wasi_snapshot_preview1.emscripten_get_now = get_now;
+			}
 			loader(importObject).then(instantiatedSource => callback(instantiatedSource.instance), reject);
 			return {}; // indicate async instantiation
 		}
