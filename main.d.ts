@@ -2,6 +2,12 @@
  * Copyright (C) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------*/
 
+export interface IOptions {
+	data: ArrayBuffer | Response;
+	print?(str: string): void;
+}
+
+export function loadWASM(options: IOptions): Promise<void>;
 export function loadWASM(data: ArrayBuffer | Response): Promise<void>;
 export function createOnigString(str: string): OnigString;
 export function createOnigScanner(patterns: string[]): OnigScanner;

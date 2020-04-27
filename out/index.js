@@ -272,9 +272,9 @@ class OnigScanner {
     }
 }
 exports.OnigScanner = OnigScanner;
-function _loadWASM(loader, resolve, reject) {
-    const { log, warn, error } = console;
+function _loadWASM(loader, print, resolve, reject) {
     onig_1.default({
+        print: print,
         instantiateWasm: (importObject, callback) => {
             if (typeof performance === 'undefined') {
                 // performance.now() is not available in this environment, so use Date.now()
@@ -289,37 +289,51 @@ function _loadWASM(loader, resolve, reject) {
         onigBinding = binding;
         resolve();
     });
-    if (typeof print !== 'undefined') {
-        // can be removed when https://github.com/emscripten-core/emscripten/issues/9829 is fixed.
-        console.log = log;
-        console.error = error;
-        console.warn = warn;
-    }
 }
 let initCalled = false;
-function loadWASM(data) {
+function loadWASM(dataOrOptions) {
     if (initCalled) {
         throw new Error(`Cannot invoke loadWASM more than once.`);
     }
     initCalled = true;
+    let data;
+    let print;
+    if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Response) {
+        data = dataOrOptions;
+    }
+    else {
+        data = dataOrOptions.data;
+        print = dataOrOptions.print;
+    }
     let resolve;
     let reject;
     const result = new Promise((_resolve, _reject) => { resolve = _resolve; reject = _reject; });
+    let loader;
     if (data instanceof ArrayBuffer) {
-        _loadWASM(importObject => WebAssembly.instantiate(data, importObject), resolve, reject);
+        loader = _makeArrayBufferLoader(data);
     }
     else if (data instanceof Response && typeof WebAssembly.instantiateStreaming === 'function') {
-        _loadWASM(importObject => WebAssembly.instantiateStreaming(data, importObject), resolve, reject);
+        loader = _makeResponseStreamingLoader(data);
     }
     else {
-        _loadWASM(async (importObject) => {
-            const arrayBuffer = await data.arrayBuffer();
-            return WebAssembly.instantiate(arrayBuffer, importObject);
-        }, resolve, reject);
+        loader = _makeResponseNonStreamingLoader(data);
     }
+    _loadWASM(loader, print, resolve, reject);
     return result;
 }
 exports.loadWASM = loadWASM;
+function _makeArrayBufferLoader(data) {
+    return importObject => WebAssembly.instantiate(data, importObject);
+}
+function _makeResponseStreamingLoader(data) {
+    return importObject => WebAssembly.instantiateStreaming(data, importObject);
+}
+function _makeResponseNonStreamingLoader(data) {
+    return async (importObject) => {
+        const arrayBuffer = await data.arrayBuffer();
+        return WebAssembly.instantiate(arrayBuffer, importObject);
+    };
+}
 function createOnigString(str) {
     return new OnigString(str);
 }
