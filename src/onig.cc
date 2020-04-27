@@ -3,12 +3,16 @@
  *--------------------------------------------------------*/
 
 #include <cstdlib>
+#include <cstdio>
+#include <cstring>
 #include "oniguruma.h"
 #include <emscripten/emscripten.h>
 
 extern "C" {
 
 typedef struct OnigRegExp_ {
+  unsigned char* strData;
+  int strLength;
   regex_t* regex;
   OnigRegion* region;
   bool hasGAnchor;
@@ -79,6 +83,9 @@ OnigRegExp* createOnigRegExp(unsigned char* data, int length) {
   }
 
   result = (OnigRegExp*)malloc(sizeof(OnigRegExp));
+  result->strLength = length;
+  result->strData = (unsigned char*)malloc(length);
+  memcpy(result->strData, data, length);
   result->regex = regex;
   result->region = onig_region_new();
   result->hasGAnchor = hasGAnchor(data, length);
@@ -90,6 +97,7 @@ OnigRegExp* createOnigRegExp(unsigned char* data, int length) {
 
 void freeOnigRegExp(OnigRegExp* regex) {
   // regex->regex will be freed separately / as part of the regset
+  free(regex->strData);
   onig_region_free(regex->region, 1);
   free(regex);
 }
@@ -220,6 +228,46 @@ int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char
       }
     }
   }
+
+  if (bestResult == NULL) {
+    return 0;
+  }
+
+  return encodeOnigRegion(bestResult, bestResultIndex);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position) {
+  printf("\n~~~~~~~~~~~~~~~~~~~~\nEntering findNextOnigScannerMatch:%.*s\n", strLength, strData);
+  int bestLocation = 0;
+  int bestResultIndex = 0;
+  OnigRegion* bestResult = NULL;
+  OnigRegion* result;
+  int i;
+  int location;
+
+  for (i = 0; i < scanner->count; i++) {
+    printf("- searchOnigRegExp: %.*s\n", scanner->regexes[i]->strLength, scanner->regexes[i]->strData);
+    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position);
+    if (result != NULL && result->num_regs > 0) {
+      location = result->beg[0];
+      printf("|- matched at byte offset %d\n", location);
+
+      if (bestResult == NULL || location < bestLocation) {
+        bestLocation = location;
+        bestResult = result;
+        bestResultIndex = i;
+      }
+
+      if (location == position) {
+        break;
+      }
+    } else {
+      printf("|- did not match\n");
+    }
+  }
+
+  printf("Leaving findNextOnigScannerMatch\n\n");
 
   if (bestResult == NULL) {
     return 0;

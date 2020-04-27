@@ -6,6 +6,7 @@ import { IOnigBinding, Pointer, IOnigMatch, IOnigCaptureIndex, OnigScanner as IO
 import OnigasmModuleFactory from './onig';
 
 let onigBinding: IOnigBinding | null = null;
+let defaultDebugCall = false;
 
 function throwLastOnigError(onigBinding: IOnigBinding): void {
 	throw new Error(onigBinding.UTF8ToString(onigBinding._getLastOnigError()));
@@ -266,19 +267,24 @@ export class OnigScanner implements IOnigScanner {
 		this._onigBinding._freeOnigScanner(this._ptr);
 	}
 
-	public findNextMatchSync(string: string | OnigString, startPosition: number): IOnigMatch | null {
+	public findNextMatchSync(string: string | OnigString, startPosition: number, debugCall: boolean = defaultDebugCall): IOnigMatch | null {
 		if (typeof string === 'string') {
 			string = new OnigString(string);
-			const result = this._findNextMatchSync(string, startPosition);
+			const result = this._findNextMatchSync(string, startPosition, debugCall);
 			string.dispose();
 			return result;
 		}
-		return this._findNextMatchSync(string, startPosition);
+		return this._findNextMatchSync(string, startPosition, debugCall);
 	}
 
-	private _findNextMatchSync(string: OnigString, startPosition: number): IOnigMatch | null {
+	private _findNextMatchSync(string: OnigString, startPosition: number, debugCall: boolean): IOnigMatch | null {
 		const onigBinding = this._onigBinding;
-		const resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+		let resultPtr: Pointer;
+		if (debugCall) {
+			resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+		} else {
+			resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+		}
 		if (resultPtr === 0) {
 			// no match
 			return null;
@@ -357,4 +363,8 @@ export function createOnigString(str: string) {
 
 export function createOnigScanner(patterns: string[]) {
 	return new OnigScanner(patterns);
+}
+
+export function setDefaultDebugCall(_defaultDebugCall: boolean): void {
+	defaultDebugCall = _defaultDebugCall;
 }

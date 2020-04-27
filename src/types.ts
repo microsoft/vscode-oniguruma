@@ -16,6 +16,7 @@ export interface IOnigBinding {
 	_createOnigScanner(strPtrsPtr: Pointer, strLenPtr: Pointer, count: number): Pointer;
 	_freeOnigScanner(ptr: Pointer): void;
 	_findNextOnigScannerMatch(scanner: Pointer, strCacheId: number, strData: Pointer, strLength: number, position: number): number;
+	_findNextOnigScannerMatchDbg(scanner: Pointer, strCacheId: number, strData: Pointer, strLength: number, position: number): number;
 }
 
 export interface IOnigCaptureIndex {

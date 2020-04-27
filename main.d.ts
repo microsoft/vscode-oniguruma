@@ -5,6 +5,7 @@
 export function loadWASM(data: ArrayBuffer | Response): Promise<void>;
 export function createOnigString(str: string): OnigString;
 export function createOnigScanner(patterns: string[]): OnigScanner;
+export function setDefaultDebugCall(defaultDebugCall: boolean): void;
 
 export class OnigString {
 	readonly content: string;
@@ -15,7 +16,7 @@ export class OnigString {
 export class OnigScanner {
 	constructor(patterns: string[]);
 	public dispose(): void;
-	public findNextMatchSync(string: string | OnigString, startPosition: number): IOnigMatch;
+	public findNextMatchSync(string: string | OnigString, startPosition: number, debugCall?: boolean): IOnigMatch;
 }
 
 export interface IOnigCaptureIndex {

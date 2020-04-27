@@ -8,6 +8,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const onig_1 = __importDefault(require("./onig"));
 let onigBinding = null;
+let defaultDebugCall = false;
 function throwLastOnigError(onigBinding) {
     throw new Error(onigBinding.UTF8ToString(onigBinding._getLastOnigError()));
 }
@@ -228,18 +229,24 @@ class OnigScanner {
     dispose() {
         this._onigBinding._freeOnigScanner(this._ptr);
     }
-    findNextMatchSync(string, startPosition) {
+    findNextMatchSync(string, startPosition, debugCall = defaultDebugCall) {
         if (typeof string === 'string') {
             string = new OnigString(string);
-            const result = this._findNextMatchSync(string, startPosition);
+            const result = this._findNextMatchSync(string, startPosition, debugCall);
             string.dispose();
             return result;
         }
-        return this._findNextMatchSync(string, startPosition);
+        return this._findNextMatchSync(string, startPosition, debugCall);
     }
-    _findNextMatchSync(string, startPosition) {
+    _findNextMatchSync(string, startPosition, debugCall) {
         const onigBinding = this._onigBinding;
-        const resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+        let resultPtr;
+        if (debugCall) {
+            resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+        }
+        else {
+            resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+        }
         if (resultPtr === 0) {
             // no match
             return null;
@@ -315,3 +322,7 @@ function createOnigScanner(patterns) {
     return new OnigScanner(patterns);
 }
 exports.createOnigScanner = createOnigScanner;
+function setDefaultDebugCall(_defaultDebugCall) {
+    defaultDebugCall = _defaultDebugCall;
+}
+exports.setDefaultDebugCall = setDefaultDebugCall;
