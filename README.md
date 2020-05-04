@@ -44,9 +44,9 @@ For more information see the [Code of Conduct FAQ](https://opensource.microsoft.
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
 ## License
-[MIT](https://github.com/microsoft/vscode-oniguruma/blob/master/LICENSE)
+[MIT](https://github.com/microsoft/vscode-oniguruma/blob/master/LICENSE.txt)
 
-This project incorporates material from other projects. Please see [ThirdPartyNotices.txt](https://github.com/microsoft/vscode-oniguruma/blob/master/ThirdPartyNotices.txt)
+This project incorporates material from other projects. Please see [NOTICES.txt](https://github.com/microsoft/vscode-oniguruma/blob/master/NOTICES.txt)
 
 ## Thank you
 
