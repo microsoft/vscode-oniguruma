@@ -10,7 +10,7 @@ expressly granted, whether by implication, estoppel or otherwise.
 The following files/folders contain third party software:
 
 =========================================================================================================
-deps/oniguruma/ --- oniguruma version 6.9.5 https://github.com/kkos/oniguruma/tree/v6.9.5
+deps/oniguruma/ --- oniguruma version 6.9.5_rev1 https://github.com/kkos/oniguruma/tree/v6.9.5_rev1
 ---------------------------------------------------------------------------------------------------------
 
 Oniguruma LICENSE
