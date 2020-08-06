@@ -28,8 +28,8 @@
     "@types/node": "^13.13.1",
     "@types/tape": "^4.13.0",
     "tape": "^4.13.2",
-    "typescript": "^3.8.3",
-    "webpack": "^4.42.1",
-    "webpack-cli": "^3.3.11"
+    "typescript": "^3.9.7",
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12"
   }
 }
