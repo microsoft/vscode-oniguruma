@@ -6,6 +6,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.setDefaultDebugCall = exports.createOnigScanner = exports.createOnigString = exports.loadWASM = exports.OnigScanner = exports.OnigString = void 0;
 const onig_1 = __importDefault(require("./onig"));
 let onigBinding = null;
 let defaultDebugCall = false;

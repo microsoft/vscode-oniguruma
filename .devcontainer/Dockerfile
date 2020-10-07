@@ -23,7 +23,7 @@ RUN mkdir -p /opt/dev \
     && cd /opt/dev \
     && git clone https://github.com/emscripten-core/emsdk.git \
     && cd /opt/dev/emsdk \
-    && ./emsdk install 1.39.12 \
-    && ./emsdk activate 1.39.12
+    && ./emsdk install 2.0.6 \
+    && ./emsdk activate 2.0.6
 
 ENV PATH="/opt/dev/emsdk:/opt/dev/emsdk/node/12.9.1_64bit/bin:/opt/dev/emsdk/upstream/emscripten:${PATH}"
