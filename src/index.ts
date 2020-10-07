@@ -5,6 +5,26 @@
 import { IOnigBinding, Pointer, IOnigMatch, IOnigCaptureIndex, OnigScanner as IOnigScanner, OnigString as IOnigString } from './types';
 import OnigasmModuleFactory from './onig';
 
+export const enum FindOption {
+	None = 0,
+	/**
+	 * equivalent of ONIG_OPTION_NOT_BEGIN_STRING: (str) isn't considered as begin of string (* fail \A)
+	 */
+	NotBeginString = 1,
+	/**
+	 * equivalent of ONIG_OPTION_NOT_END_STRING: (end) isn't considered as end of string (* fail \z, \Z)
+	 */
+	NotEndString = 2,
+	/**
+	 * equivalent of ONIG_OPTION_NOT_BEGIN_POSITION: (start) isn't considered as start position of search (* fail \G)
+	 */
+	NotBeginPosition = 4,
+	/**
+	 * used for debugging purposes.
+	 */
+	DebugCall = 8,
+}
+
 let onigBinding: IOnigBinding | null = null;
 let defaultDebugCall = false;
 
@@ -267,23 +287,36 @@ export class OnigScanner implements IOnigScanner {
 		this._onigBinding._freeOnigScanner(this._ptr);
 	}
 
-	public findNextMatchSync(string: string | OnigString, startPosition: number, debugCall: boolean = defaultDebugCall): IOnigMatch | null {
+	public findNextMatchSync(string: string | OnigString, startPosition: number, options: number): IOnigMatch | null;
+	public findNextMatchSync(string: string | OnigString, startPosition: number, debugCall: boolean): IOnigMatch | null;
+	public findNextMatchSync(string: string | OnigString, startPosition: number): IOnigMatch | null;
+	public findNextMatchSync(string: string | OnigString, startPosition: number, arg?: number | boolean): IOnigMatch | null {
+		let debugCall = false;
+		let options = FindOption.None;
+		if (typeof arg === 'number') {
+			if (arg & FindOption.DebugCall) {
+				debugCall = true;
+			}
+			options = arg;
+		} else if (typeof arg === 'boolean') {
+			debugCall = arg;
+		}
 		if (typeof string === 'string') {
 			string = new OnigString(string);
-			const result = this._findNextMatchSync(string, startPosition, debugCall);
+			const result = this._findNextMatchSync(string, startPosition, debugCall, options);
 			string.dispose();
 			return result;
 		}
-		return this._findNextMatchSync(string, startPosition, debugCall);
+		return this._findNextMatchSync(string, startPosition, debugCall, options);
 	}
 
-	private _findNextMatchSync(string: OnigString, startPosition: number, debugCall: boolean): IOnigMatch | null {
+	private _findNextMatchSync(string: OnigString, startPosition: number, debugCall: boolean, options: number): IOnigMatch | null {
 		const onigBinding = this._onigBinding;
 		let resultPtr: Pointer;
 		if (debugCall) {
-			resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+			resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), options);
 		} else {
-			resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+			resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), options);
 		}
 		if (resultPtr === 0) {
 			// no match

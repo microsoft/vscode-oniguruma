@@ -230,23 +230,34 @@ class OnigScanner {
     dispose() {
         this._onigBinding._freeOnigScanner(this._ptr);
     }
-    findNextMatchSync(string, startPosition, debugCall = defaultDebugCall) {
+    findNextMatchSync(string, startPosition, arg) {
+        let debugCall = false;
+        let options = 0 /* None */;
+        if (typeof arg === 'number') {
+            if (arg & 8 /* DebugCall */) {
+                debugCall = true;
+            }
+            options = arg;
+        }
+        else if (typeof arg === 'boolean') {
+            debugCall = arg;
+        }
         if (typeof string === 'string') {
             string = new OnigString(string);
-            const result = this._findNextMatchSync(string, startPosition, debugCall);
+            const result = this._findNextMatchSync(string, startPosition, debugCall, options);
             string.dispose();
             return result;
         }
-        return this._findNextMatchSync(string, startPosition, debugCall);
+        return this._findNextMatchSync(string, startPosition, debugCall, options);
     }
-    _findNextMatchSync(string, startPosition, debugCall) {
+    _findNextMatchSync(string, startPosition, debugCall, options) {
         const onigBinding = this._onigBinding;
         let resultPtr;
         if (debugCall) {
-            resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+            resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), options);
         }
         else {
-            resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition));
+            resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), options);
         }
         if (resultPtr === 0) {
             // no match

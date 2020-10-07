@@ -18,6 +18,7 @@ typedef struct OnigRegExp_ {
   bool hasGAnchor;
   int lastSearchStrCacheId;
   int lastSearchPosition;
+  int lastSearchOnigOption;
   bool lastSearchMatched;
 } OnigRegExp;
 
@@ -91,6 +92,7 @@ OnigRegExp* createOnigRegExp(unsigned char* data, int length) {
   result->hasGAnchor = hasGAnchor(data, length);
   result->lastSearchStrCacheId = 0;
   result->lastSearchPosition = 0;
+  result->lastSearchOnigOption = ONIG_OPTION_NONE;
   result->lastSearchMatched = false;
   return result;
 }
@@ -102,12 +104,12 @@ void freeOnigRegExp(OnigRegExp* regex) {
   free(regex);
 }
 
-OnigRegion* _searchOnigRegExp(OnigRegExp* regex, unsigned char* strData, int strLength, int position) {
+OnigRegion* _searchOnigRegExp(OnigRegExp* regex, unsigned char* strData, int strLength, int position, OnigOptionType onigOption) {
   int status;
 
   status = onig_search(regex->regex, strData, strData + strLength,
                        strData + position, strData + strLength,
-                       regex->region, ONIG_OPTION_NONE);
+                       regex->region, onigOption);
 
   if (status == ONIG_MISMATCH || status < 0) {
     regex->lastSearchMatched = false;
@@ -118,14 +120,14 @@ OnigRegion* _searchOnigRegExp(OnigRegExp* regex, unsigned char* strData, int str
   return regex->region;
 }
 
-OnigRegion* searchOnigRegExp(OnigRegExp* regex, int strCacheId, unsigned char* strData, int strLength, int position) {
+OnigRegion* searchOnigRegExp(OnigRegExp* regex, int strCacheId, unsigned char* strData, int strLength, int position, OnigOptionType onigOption) {
   if (regex->hasGAnchor) {
     // Should not use caching, because the regular expression
     // targets the current search position (\G)
-    return _searchOnigRegExp(regex, strData, strLength, position);
+    return _searchOnigRegExp(regex, strData, strLength, position, onigOption);
   }
 
-  if (regex->lastSearchStrCacheId == strCacheId && regex->lastSearchPosition <= position) {
+  if (regex->lastSearchStrCacheId == strCacheId && regex->lastSearchOnigOption == onigOption && regex->lastSearchPosition <= position) {
     if (!regex->lastSearchMatched) {
       // last time there was no match
       return NULL;
@@ -138,7 +140,8 @@ OnigRegion* searchOnigRegExp(OnigRegExp* regex, int strCacheId, unsigned char* s
 
   regex->lastSearchStrCacheId = strCacheId;
   regex->lastSearchPosition = position;
-  return _searchOnigRegExp(regex, strData, strLength, position);
+  regex->lastSearchOnigOption = onigOption;
+  return _searchOnigRegExp(regex, strData, strLength, position, onigOption);
 }
 
 #pragma endregion
@@ -193,19 +196,39 @@ int freeOnigScanner(OnigScanner* scanner) {
   return 0;
 }
 
+#define FIND_OPTION_NONE                 0U
+#define FIND_OPTION_NOT_BEGIN_STRING     1U
+#define FIND_OPTION_NOT_END_STRING       2U
+#define FIND_OPTION_NOT_BEGIN_POSITION   4U
+
+OnigOptionType toOnigOption(int option) {
+  OnigOptionType onigOption = ONIG_OPTION_NONE;
+  if (option & FIND_OPTION_NOT_BEGIN_STRING) {
+    onigOption |= ONIG_OPTION_NOT_BEGIN_STRING;
+  }
+  if (option & FIND_OPTION_NOT_END_STRING) {
+    onigOption |= ONIG_OPTION_NOT_END_STRING;
+  }
+  if (option & FIND_OPTION_NOT_BEGIN_POSITION) {
+    onigOption |= ONIG_OPTION_NOT_BEGIN_POSITION;
+  }
+  return onigOption;
+}
+
 EMSCRIPTEN_KEEPALIVE
-int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position) {
+int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position, int option) {
   int bestLocation = 0;
   int bestResultIndex = 0;
   OnigRegion* bestResult = NULL;
   OnigRegion* result;
   int i;
   int location;
+  OnigOptionType onigOption = toOnigOption(option);
 
   if (strLength < 1000) {
     // for short strings, it is better to use the RegSet API, but for longer strings caching pays off
     bestResultIndex = onig_regset_search(scanner->rset, strData, strData + strLength, strData + position, strData + strLength,
-                                         ONIG_REGSET_POSITION_LEAD, ONIG_OPTION_NONE, &bestLocation);
+                                         ONIG_REGSET_POSITION_LEAD, onigOption, &bestLocation);
     if (bestResultIndex < 0) {
       return 0;
     }
@@ -213,7 +236,7 @@ int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char
   }
 
   for (i = 0; i < scanner->count; i++) {
-    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position);
+    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position, onigOption);
     if (result != NULL && result->num_regs > 0) {
       location = result->beg[0];
 
@@ -237,7 +260,7 @@ int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char
 }
 
 EMSCRIPTEN_KEEPALIVE
-int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position) {
+int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position, int option) {
   printf("\n~~~~~~~~~~~~~~~~~~~~\nEntering findNextOnigScannerMatch:%.*s\n", strLength, strData);
   int bestLocation = 0;
   int bestResultIndex = 0;
@@ -245,13 +268,14 @@ int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned c
   OnigRegion* result;
   int i;
   int location;
+  OnigOptionType onigOption = toOnigOption(option);
   double startTime;
   double elapsedTime;
 
   for (i = 0; i < scanner->count; i++) {
     printf("- searchOnigRegExp: %.*s\n", scanner->regexes[i]->strLength, scanner->regexes[i]->strData);
     startTime = emscripten_get_now();
-    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position);
+    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position, onigOption);
     elapsedTime = emscripten_get_now() - startTime;
     if (result != NULL && result->num_regs > 0) {
       location = result->beg[0];

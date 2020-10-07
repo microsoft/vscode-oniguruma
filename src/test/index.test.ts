@@ -4,7 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { loadWASM, OnigString, OnigScanner } from '../index';
+import { loadWASM, OnigString, OnigScanner, FindOption } from '../index';
 import test from 'tape';
 
 const REPO_ROOT = path.join(__dirname, '../../');
@@ -98,6 +98,34 @@ testLib('kkos/oniguruma#192', (t) => {
 	const str = new OnigString("    while (i < len && f(array[i]))");
 	const scanner = new OnigScanner(["(?x)\n  (?<!\\+\\+|--)(?<=[({\\[,?=>:*]|&&|\\|\\||\\?|\\*\\/|^await|[^\\._$[:alnum:]]await|^return|[^\\._$[:alnum:]]return|^default|[^\\._$[:alnum:]]default|^yield|[^\\._$[:alnum:]]yield|^)\\s*\n  (?!<\\s*[_$[:alpha:]][_$[:alnum:]]*((\\s+extends\\s+[^=>])|,)) # look ahead is not type parameter of arrow\n  (?=(<)\\s*(?:([_$[:alpha:]][-_$[:alnum:].]*)(?<!\\.|-)(:))?((?:[a-z][a-z0-9]*|([_$[:alpha:]][-_$[:alnum:].]*))(?<!\\.|-))(?=((<\\s*)|(\\s+))(?!\\?)|\\/?>))"]);
 	t.deepEqual(scanner.findNextMatchSync(str, 0), null);
+	scanner.dispose();
+	str.dispose();
+});
+
+testLib('FindOption.NotBeginPosition', (t) => {
+	const str = new OnigString('first-and-second');
+	const scanner = new OnigScanner(['\\G-and']);
+	t.deepEqual(scanner.findNextMatchSync(str, 5), { index: 0, captureIndices: [{ start: 5, end: 9, length: 4 }] });
+	t.deepEqual(scanner.findNextMatchSync(str, 5, FindOption.NotBeginPosition), null);
+	scanner.dispose();
+	str.dispose();
+});
+
+testLib('FindOption.NotBeginString', (t) => {
+	const str = new OnigString('first-and-first');
+	const scanner = new OnigScanner(['\\Afirst']);
+	t.deepEqual(scanner.findNextMatchSync(str, 10), null);
+	t.deepEqual(scanner.findNextMatchSync(str, 0), { index: 0, captureIndices: [{ start: 0, end: 5, length: 5 }] });
+	t.deepEqual(scanner.findNextMatchSync(str, 0, FindOption.NotBeginString), null);
+	scanner.dispose();
+	str.dispose();
+});
+
+testLib('FindOption.NotEndString', (t) => {
+	const str = new OnigString('first-and-first');
+	const scanner = new OnigScanner(['first\\z']);
+	t.deepEqual(scanner.findNextMatchSync(str, 10), { index: 0, captureIndices: [{ start: 10, end: 15, length: 5 }] });
+	t.deepEqual(scanner.findNextMatchSync(str, 10, FindOption.NotEndString), null);
 	scanner.dispose();
 	str.dispose();
 });

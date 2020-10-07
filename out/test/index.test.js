@@ -112,3 +112,28 @@ testLib('kkos/oniguruma#192', (t) => {
     scanner.dispose();
     str.dispose();
 });
+testLib('FindOption.NotBeginPosition', (t) => {
+    const str = new index_1.OnigString('first-and-second');
+    const scanner = new index_1.OnigScanner(['\\G-and']);
+    t.deepEqual(scanner.findNextMatchSync(str, 5), { index: 0, captureIndices: [{ start: 5, end: 9, length: 4 }] });
+    t.deepEqual(scanner.findNextMatchSync(str, 5, 4 /* NotBeginPosition */), null);
+    scanner.dispose();
+    str.dispose();
+});
+testLib('FindOption.NotBeginString', (t) => {
+    const str = new index_1.OnigString('first-and-first');
+    const scanner = new index_1.OnigScanner(['\\Afirst']);
+    t.deepEqual(scanner.findNextMatchSync(str, 10), null);
+    t.deepEqual(scanner.findNextMatchSync(str, 0), { index: 0, captureIndices: [{ start: 0, end: 5, length: 5 }] });
+    t.deepEqual(scanner.findNextMatchSync(str, 0, 1 /* NotBeginString */), null);
+    scanner.dispose();
+    str.dispose();
+});
+testLib('FindOption.NotEndString', (t) => {
+    const str = new index_1.OnigString('first-and-first');
+    const scanner = new index_1.OnigScanner(['first\\z']);
+    t.deepEqual(scanner.findNextMatchSync(str, 10), { index: 0, captureIndices: [{ start: 10, end: 15, length: 5 }] });
+    t.deepEqual(scanner.findNextMatchSync(str, 10, 2 /* NotEndString */), null);
+    scanner.dispose();
+    str.dispose();
+});
