@@ -132,7 +132,7 @@ class UtfString {
         return result;
     }
     createString(onigBinding) {
-        const result = onigBinding._malloc(this.utf8Length);
+        const result = onigBinding._omalloc(this.utf8Length);
         onigBinding.HEAPU8.set(this.utf8Value, result);
         return result;
     }
@@ -152,7 +152,7 @@ class OnigString {
         this.utf8OffsetToUtf16 = utfString.utf8OffsetToUtf16;
         if (this.utf8Length < 10000 && !OnigString._sharedPtrInUse) {
             if (!OnigString._sharedPtr) {
-                OnigString._sharedPtr = onigBinding._malloc(10000);
+                OnigString._sharedPtr = onigBinding._omalloc(10000);
             }
             OnigString._sharedPtrInUse = true;
             onigBinding.HEAPU8.set(utfString.utf8Value, OnigString._sharedPtr);
@@ -191,7 +191,7 @@ class OnigString {
             OnigString._sharedPtrInUse = false;
         }
         else {
-            this._onigBinding._free(this.ptr);
+            this._onigBinding._ofree(this.ptr);
         }
     }
 }
@@ -211,16 +211,16 @@ class OnigScanner {
             strPtrsArr[i] = utfString.createString(onigBinding);
             strLenArr[i] = utfString.utf8Length;
         }
-        const strPtrsPtr = onigBinding._malloc(4 * patterns.length);
+        const strPtrsPtr = onigBinding._omalloc(4 * patterns.length);
         onigBinding.HEAPU32.set(strPtrsArr, strPtrsPtr / 4);
-        const strLenPtr = onigBinding._malloc(4 * patterns.length);
+        const strLenPtr = onigBinding._omalloc(4 * patterns.length);
         onigBinding.HEAPU32.set(strLenArr, strLenPtr / 4);
         const scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
         for (let i = 0, len = patterns.length; i < len; i++) {
-            onigBinding._free(strPtrsArr[i]);
+            onigBinding._ofree(strPtrsArr[i]);
         }
-        onigBinding._free(strLenPtr);
-        onigBinding._free(strPtrsPtr);
+        onigBinding._ofree(strLenPtr);
+        onigBinding._ofree(strPtrsPtr);
         if (scannerPtr === 0) {
             throwLastOnigError(onigBinding);
         }

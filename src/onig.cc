@@ -10,6 +10,18 @@
 
 extern "C" {
 
+EMSCRIPTEN_KEEPALIVE
+char* omalloc(int count)
+{
+  return (char*)malloc(count);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void ofree(char* ptr)
+{
+  free(ptr);
+}
+
 typedef struct OnigRegExp_ {
   unsigned char* strData;
   int strLength;
