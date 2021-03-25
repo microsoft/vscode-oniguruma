@@ -303,9 +303,11 @@ function _loadWASM(loader, print, resolve, reject) {
     });
 }
 let initCalled = false;
+let initPromise = null;
 function loadWASM(dataOrOptions) {
     if (initCalled) {
-        throw new Error(`Cannot invoke loadWASM more than once.`);
+        // Already initialized
+        return initPromise;
     }
     initCalled = true;
     let data;
@@ -319,7 +321,7 @@ function loadWASM(dataOrOptions) {
     }
     let resolve;
     let reject;
-    const result = new Promise((_resolve, _reject) => { resolve = _resolve; reject = _reject; });
+    initPromise = new Promise((_resolve, _reject) => { resolve = _resolve; reject = _reject; });
     let loader;
     if (data instanceof ArrayBuffer) {
         loader = _makeArrayBufferLoader(data);
@@ -331,7 +333,7 @@ function loadWASM(dataOrOptions) {
         loader = _makeResponseNonStreamingLoader(data);
     }
     _loadWASM(loader, print, resolve, reject);
-    return result;
+    return initPromise;
 }
 exports.loadWASM = loadWASM;
 function _makeArrayBufferLoader(data) {

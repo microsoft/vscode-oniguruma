@@ -366,6 +366,7 @@ function _loadWASM(loader: WASMLoader, print: ((str: string) => void) | undefine
 }
 
 let initCalled = false;
+let initPromise: Promise<void> | null = null;
 export interface IOptions {
 	data: ArrayBuffer | Response;
 	print?(str: string): void;
@@ -375,7 +376,8 @@ export function loadWASM(options: IOptions): Promise<void>;
 export function loadWASM(data: ArrayBuffer | Response): Promise<void>;
 export function loadWASM(dataOrOptions: ArrayBuffer | Response | IOptions): Promise<void> {
 	if (initCalled) {
-		throw new Error(`Cannot invoke loadWASM more than once.`);
+		// Already initialized
+		return initPromise!;
 	}
 	initCalled = true;
 
@@ -391,7 +393,7 @@ export function loadWASM(dataOrOptions: ArrayBuffer | Response | IOptions): Prom
 
 	let resolve: () => void;
 	let reject: (err: any) => void;
-	const result = new Promise<void>((_resolve, _reject) => { resolve = _resolve; reject = _reject; })
+	initPromise = new Promise<void>((_resolve, _reject) => { resolve = _resolve; reject = _reject; })
 
 	let loader: WASMLoader;
 	if (data instanceof ArrayBuffer) {
@@ -403,7 +405,7 @@ export function loadWASM(dataOrOptions: ArrayBuffer | Response | IOptions): Prom
 	}
 	_loadWASM(loader, print, resolve!, reject!);
 
-	return result;
+	return initPromise;
 }
 
 function _makeArrayBufferLoader(data: ArrayBuffer): WASMLoader {
