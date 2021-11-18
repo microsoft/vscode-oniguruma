@@ -368,23 +368,23 @@ function _loadWASM(loader: WASMLoader, print: ((str: string) => void) | undefine
 let initCalled = false;
 let initPromise: Promise<void> | null = null;
 export interface IOptions {
-	data: ArrayBuffer | Response;
+	data: ArrayBuffer | WASMLoader | Response;
 	print?(str: string): void;
 }
 
 export function loadWASM(options: IOptions): Promise<void>;
-export function loadWASM(data: ArrayBuffer | Response): Promise<void>;
-export function loadWASM(dataOrOptions: ArrayBuffer | Response | IOptions): Promise<void> {
+export function loadWASM(data: ArrayBuffer | WASMLoader | Response): Promise<void>;
+export function loadWASM(dataOrOptions: ArrayBuffer | WASMLoader | Response |  IOptions): Promise<void> {
 	if (initCalled) {
 		// Already initialized
 		return initPromise!;
 	}
 	initCalled = true;
 
-	let data: ArrayBuffer | Response;
+	let data: ArrayBuffer | WASMLoader | Response;
 	let print: ((str: string) => void) | undefined;
 
-	if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Response) {
+	if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Function || dataOrOptions instanceof Response) {
 		data = dataOrOptions;
 	} else {
 		data = dataOrOptions.data;
@@ -398,6 +398,8 @@ export function loadWASM(dataOrOptions: ArrayBuffer | Response | IOptions): Prom
 	let loader: WASMLoader;
 	if (data instanceof ArrayBuffer) {
 		loader = _makeArrayBufferLoader(data);
+	} else if (data instanceof Function) {
+		loader = data;
 	} else if (data instanceof Response && typeof WebAssembly.instantiateStreaming === 'function') {
 		loader = _makeResponseStreamingLoader(data);
 	} else {

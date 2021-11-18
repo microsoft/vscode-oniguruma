@@ -312,7 +312,7 @@ function loadWASM(dataOrOptions) {
     initCalled = true;
     let data;
     let print;
-    if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Response) {
+    if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Function || dataOrOptions instanceof Response) {
         data = dataOrOptions;
     }
     else {
@@ -325,6 +325,9 @@ function loadWASM(dataOrOptions) {
     let loader;
     if (data instanceof ArrayBuffer) {
         loader = _makeArrayBufferLoader(data);
+    }
+    else if (data instanceof Function) {
+        loader = data;
     }
     else if (data instanceof Response && typeof WebAssembly.instantiateStreaming === 'function') {
         loader = _makeResponseStreamingLoader(data);
