@@ -302,6 +302,9 @@ function _loadWASM(loader, print, resolve, reject) {
         resolve();
     });
 }
+function isInstantiatorOptionsObject(dataOrOptions) {
+    return (typeof dataOrOptions.instantiator === 'function');
+}
 let initCalled = false;
 let initPromise = null;
 function loadWASM(dataOrOptions) {
@@ -310,28 +313,34 @@ function loadWASM(dataOrOptions) {
         return initPromise;
     }
     initCalled = true;
-    let data;
+    let loader;
     let print;
-    if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Response) {
-        data = dataOrOptions;
+    if (isInstantiatorOptionsObject(dataOrOptions)) {
+        loader = dataOrOptions.instantiator;
+        print = dataOrOptions.print;
     }
     else {
-        data = dataOrOptions.data;
-        print = dataOrOptions.print;
+        let data;
+        if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Response) {
+            data = dataOrOptions;
+        }
+        else {
+            data = dataOrOptions.data;
+            print = dataOrOptions.print;
+        }
+        if (data instanceof ArrayBuffer) {
+            loader = _makeArrayBufferLoader(data);
+        }
+        else if (data instanceof Response && typeof WebAssembly.instantiateStreaming === 'function') {
+            loader = _makeResponseStreamingLoader(data);
+        }
+        else {
+            loader = _makeResponseNonStreamingLoader(data);
+        }
     }
     let resolve;
     let reject;
     initPromise = new Promise((_resolve, _reject) => { resolve = _resolve; reject = _reject; });
-    let loader;
-    if (data instanceof ArrayBuffer) {
-        loader = _makeArrayBufferLoader(data);
-    }
-    else if (data instanceof Response && typeof WebAssembly.instantiateStreaming === 'function') {
-        loader = _makeResponseStreamingLoader(data);
-    }
-    else {
-        loader = _makeResponseNonStreamingLoader(data);
-    }
     _loadWASM(loader, print, resolve, reject);
     return initPromise;
 }

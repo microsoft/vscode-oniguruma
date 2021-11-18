@@ -9,7 +9,7 @@ import test from 'tape';
 
 const REPO_ROOT = path.join(__dirname, '../../');
 const wasm = fs.readFileSync(path.join(REPO_ROOT, './out/onig.wasm')).buffer;
-const loadPromise = loadWASM(wasm);
+const loadPromise = loadWASM({ instantiator: (imports) => WebAssembly.instantiate(wasm, imports) });
 
 function testLib(name: string, callback: (t: test.Test) => void) {
 	test(name, async (t: test.Test) => {

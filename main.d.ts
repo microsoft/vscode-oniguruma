@@ -2,10 +2,19 @@
  * Copyright (C) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------*/
 
-export interface IOptions {
-	data: ArrayBuffer | Response;
+export interface WebAssemblyInstantiator {
+	(importObject: Record<string, Record<string, WebAssembly.ImportValue>> | undefined): Promise<WebAssembly.WebAssemblyInstantiatedSource>;
+}
+interface ICommonOptions {
 	print?(str: string): void;
 }
+interface IInstantiatorOptions extends ICommonOptions {
+	instantiator: WebAssemblyInstantiator;
+}
+interface IDataOptions extends ICommonOptions {
+	data: ArrayBuffer | Response;
+}
+export type IOptions = IInstantiatorOptions | IDataOptions;
 
 export function loadWASM(options: IOptions): Promise<void>;
 export function loadWASM(data: ArrayBuffer | Response): Promise<void>;

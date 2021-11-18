@@ -31,7 +31,7 @@ const index_1 = require("../index");
 const tape_1 = __importDefault(require("tape"));
 const REPO_ROOT = path.join(__dirname, '../../');
 const wasm = fs.readFileSync(path.join(REPO_ROOT, './out/onig.wasm')).buffer;
-const loadPromise = index_1.loadWASM(wasm);
+const loadPromise = index_1.loadWASM({ instantiator: (imports) => WebAssembly.instantiate(wasm, imports) });
 function testLib(name, callback) {
     tape_1.default(name, async (t) => {
         await loadPromise;
