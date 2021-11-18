@@ -343,10 +343,21 @@ export class OnigScanner implements IOnigScanner {
 	}
 }
 
+export interface WebAssemblyInstantiator {
+	(importObject: Record<string, Record<string, WebAssembly.ImportValue>> | undefined): Promise<WebAssembly.WebAssemblyInstantiatedSource>;
+}
+interface ICommonOptions {
+	print?(str: string): void;
+}
+interface IInstantiatorOptions extends ICommonOptions {
+	instantiator: WebAssemblyInstantiator;
+}
+interface IDataOptions extends ICommonOptions {
+	data: ArrayBuffer | Response;
+}
+export type IOptions = IInstantiatorOptions | IDataOptions;
 
-type WASMLoader = (importObject: Record<string, Record<string, WebAssembly.ImportValue>> | undefined) => Promise<WebAssembly.WebAssemblyInstantiatedSource>;
-
-function _loadWASM(loader: WASMLoader, print: ((str: string) => void) | undefined, resolve: () => void, reject: (err: any) => void): void {
+function _loadWASM(loader: WebAssemblyInstantiator, print: ((str: string) => void) | undefined, resolve: () => void, reject: (err: any) => void): void {
 	OnigasmModuleFactory({
 		print: print,
 		instantiateWasm: (importObject, callback) => {
@@ -365,58 +376,62 @@ function _loadWASM(loader: WASMLoader, print: ((str: string) => void) | undefine
 	});
 }
 
-let initCalled = false;
-let initPromise: Promise<void> | null = null;
-export interface IOptions {
-	data: ArrayBuffer | WASMLoader | Response;
-	print?(str: string): void;
+function isInstantiatorOptionsObject(dataOrOptions: ArrayBuffer | Response | IOptions): dataOrOptions is IInstantiatorOptions {
+	return (typeof (<IInstantiatorOptions>dataOrOptions).instantiator === 'function');
 }
 
+let initCalled = false;
+let initPromise: Promise<void> | null = null;
+
 export function loadWASM(options: IOptions): Promise<void>;
-export function loadWASM(data: ArrayBuffer | WASMLoader | Response): Promise<void>;
-export function loadWASM(dataOrOptions: ArrayBuffer | WASMLoader | Response |  IOptions): Promise<void> {
+export function loadWASM(data: ArrayBuffer | Response): Promise<void>;
+export function loadWASM(dataOrOptions: ArrayBuffer | Response | IOptions): Promise<void> {
 	if (initCalled) {
 		// Already initialized
 		return initPromise!;
 	}
 	initCalled = true;
 
-	let data: ArrayBuffer | WASMLoader | Response;
+	let loader: WebAssemblyInstantiator;
 	let print: ((str: string) => void) | undefined;
 
-	if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Function || dataOrOptions instanceof Response) {
-		data = dataOrOptions;
-	} else {
-		data = dataOrOptions.data;
+	if (isInstantiatorOptionsObject(dataOrOptions)) {
+		loader = dataOrOptions.instantiator;
 		print = dataOrOptions.print;
+	} else {
+		let data: ArrayBuffer | Response;
+		if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Response) {
+			data = dataOrOptions;
+		} else {
+			data = dataOrOptions.data;
+			print = dataOrOptions.print;
+		}
+
+		if (data instanceof ArrayBuffer) {
+			loader = _makeArrayBufferLoader(data);
+		} else if (data instanceof Response && typeof WebAssembly.instantiateStreaming === 'function') {
+			loader = _makeResponseStreamingLoader(data);
+		} else {
+			loader = _makeResponseNonStreamingLoader(data);
+		}
 	}
 
 	let resolve: () => void;
 	let reject: (err: any) => void;
 	initPromise = new Promise<void>((_resolve, _reject) => { resolve = _resolve; reject = _reject; })
 
-	let loader: WASMLoader;
-	if (data instanceof ArrayBuffer) {
-		loader = _makeArrayBufferLoader(data);
-	} else if (data instanceof Function) {
-		loader = data;
-	} else if (data instanceof Response && typeof WebAssembly.instantiateStreaming === 'function') {
-		loader = _makeResponseStreamingLoader(data);
-	} else {
-		loader = _makeResponseNonStreamingLoader(data);
-	}
 	_loadWASM(loader, print, resolve!, reject!);
 
 	return initPromise;
 }
 
-function _makeArrayBufferLoader(data: ArrayBuffer): WASMLoader {
+function _makeArrayBufferLoader(data: ArrayBuffer): WebAssemblyInstantiator {
 	return importObject => WebAssembly.instantiate(data, importObject);
 }
-function _makeResponseStreamingLoader(data: Response): WASMLoader {
+function _makeResponseStreamingLoader(data: Response): WebAssemblyInstantiator {
 	return importObject => WebAssembly.instantiateStreaming(data, importObject);
 }
-function _makeResponseNonStreamingLoader(data: Response): WASMLoader {
+function _makeResponseNonStreamingLoader(data: Response): WebAssemblyInstantiator {
 	return async importObject => {
 		const arrayBuffer = await data.arrayBuffer();
 		return WebAssembly.instantiate(arrayBuffer, importObject)
