@@ -291,7 +291,7 @@ export class OnigScanner implements IOnigScanner {
 	public findNextMatchSync(string: string | OnigString, startPosition: number, debugCall: boolean): IOnigMatch | null;
 	public findNextMatchSync(string: string | OnigString, startPosition: number): IOnigMatch | null;
 	public findNextMatchSync(string: string | OnigString, startPosition: number, arg?: number | boolean): IOnigMatch | null {
-		let debugCall = false;
+		let debugCall = defaultDebugCall;
 		let options = FindOption.None;
 		if (typeof arg === 'number') {
 			if (arg & FindOption.DebugCall) {

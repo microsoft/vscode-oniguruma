@@ -231,7 +231,7 @@ class OnigScanner {
         this._onigBinding._freeOnigScanner(this._ptr);
     }
     findNextMatchSync(string, startPosition, arg) {
-        let debugCall = false;
+        let debugCall = defaultDebugCall;
         let options = 0 /* None */;
         if (typeof arg === 'number') {
             if (arg & 8 /* DebugCall */) {
