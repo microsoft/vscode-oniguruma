@@ -305,6 +305,12 @@ function _loadWASM(loader, print, resolve, reject) {
 function isInstantiatorOptionsObject(dataOrOptions) {
     return (typeof dataOrOptions.instantiator === 'function');
 }
+function isDataOptionsObject(dataOrOptions) {
+    return (typeof dataOrOptions.data !== 'undefined');
+}
+function isResponse(dataOrOptions) {
+    return (typeof Response !== 'undefined' && dataOrOptions instanceof Response);
+}
 let initCalled = false;
 let initPromise = null;
 function loadWASM(dataOrOptions) {
@@ -321,21 +327,23 @@ function loadWASM(dataOrOptions) {
     }
     else {
         let data;
-        if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Response) {
-            data = dataOrOptions;
-        }
-        else {
+        if (isDataOptionsObject(dataOrOptions)) {
             data = dataOrOptions.data;
             print = dataOrOptions.print;
         }
-        if (data instanceof ArrayBuffer) {
-            loader = _makeArrayBufferLoader(data);
+        else {
+            data = dataOrOptions;
         }
-        else if (data instanceof Response && typeof WebAssembly.instantiateStreaming === 'function') {
-            loader = _makeResponseStreamingLoader(data);
+        if (isResponse(data)) {
+            if (typeof WebAssembly.instantiateStreaming === 'function') {
+                loader = _makeResponseStreamingLoader(data);
+            }
+            else {
+                loader = _makeResponseNonStreamingLoader(data);
+            }
         }
         else {
-            loader = _makeResponseNonStreamingLoader(data);
+            loader = _makeArrayBufferLoader(data);
         }
     }
     let resolve;

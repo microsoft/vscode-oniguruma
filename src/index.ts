@@ -353,7 +353,7 @@ interface IInstantiatorOptions extends ICommonOptions {
 	instantiator: WebAssemblyInstantiator;
 }
 interface IDataOptions extends ICommonOptions {
-	data: ArrayBuffer | Response;
+	data: ArrayBufferView | ArrayBuffer | Response;
 }
 export type IOptions = IInstantiatorOptions | IDataOptions;
 
@@ -376,16 +376,24 @@ function _loadWASM(loader: WebAssemblyInstantiator, print: ((str: string) => voi
 	});
 }
 
-function isInstantiatorOptionsObject(dataOrOptions: ArrayBuffer | Response | IOptions): dataOrOptions is IInstantiatorOptions {
+function isInstantiatorOptionsObject(dataOrOptions: ArrayBufferView | ArrayBuffer | Response | IOptions): dataOrOptions is IInstantiatorOptions {
 	return (typeof (<IInstantiatorOptions>dataOrOptions).instantiator === 'function');
+}
+
+function isDataOptionsObject(dataOrOptions: ArrayBufferView | ArrayBuffer | Response | IOptions): dataOrOptions is IDataOptions {
+	return (typeof (<IDataOptions>dataOrOptions).data !== 'undefined');
+}
+
+function isResponse(dataOrOptions: ArrayBufferView | ArrayBuffer | Response | IOptions): dataOrOptions is Response {
+	return (typeof Response !== 'undefined' && dataOrOptions instanceof Response);
 }
 
 let initCalled = false;
 let initPromise: Promise<void> | null = null;
 
 export function loadWASM(options: IOptions): Promise<void>;
-export function loadWASM(data: ArrayBuffer | Response): Promise<void>;
-export function loadWASM(dataOrOptions: ArrayBuffer | Response | IOptions): Promise<void> {
+export function loadWASM(data: ArrayBufferView | ArrayBuffer | Response): Promise<void>;
+export function loadWASM(dataOrOptions: ArrayBufferView | ArrayBuffer | Response | IOptions): Promise<void> {
 	if (initCalled) {
 		// Already initialized
 		return initPromise!;
@@ -399,20 +407,22 @@ export function loadWASM(dataOrOptions: ArrayBuffer | Response | IOptions): Prom
 		loader = dataOrOptions.instantiator;
 		print = dataOrOptions.print;
 	} else {
-		let data: ArrayBuffer | Response;
-		if (dataOrOptions instanceof ArrayBuffer || dataOrOptions instanceof Response) {
-			data = dataOrOptions;
-		} else {
+		let data: ArrayBufferView | ArrayBuffer | Response;
+		if (isDataOptionsObject(dataOrOptions)) {
 			data = dataOrOptions.data;
 			print = dataOrOptions.print;
+		} else {
+			data = dataOrOptions;
 		}
 
-		if (data instanceof ArrayBuffer) {
-			loader = _makeArrayBufferLoader(data);
-		} else if (data instanceof Response && typeof WebAssembly.instantiateStreaming === 'function') {
-			loader = _makeResponseStreamingLoader(data);
+		if (isResponse(data)) {
+			if (typeof WebAssembly.instantiateStreaming === 'function') {
+				loader = _makeResponseStreamingLoader(data);
+			} else {
+				loader = _makeResponseNonStreamingLoader(data);
+			}
 		} else {
-			loader = _makeResponseNonStreamingLoader(data);
+			loader = _makeArrayBufferLoader(data);
 		}
 	}
 
@@ -425,7 +435,7 @@ export function loadWASM(dataOrOptions: ArrayBuffer | Response | IOptions): Prom
 	return initPromise;
 }
 
-function _makeArrayBufferLoader(data: ArrayBuffer): WebAssemblyInstantiator {
+function _makeArrayBufferLoader(data: ArrayBufferView | ArrayBuffer): WebAssemblyInstantiator {
 	return importObject => WebAssembly.instantiate(data, importObject);
 }
 function _makeResponseStreamingLoader(data: Response): WebAssemblyInstantiator {

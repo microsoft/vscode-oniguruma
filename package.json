@@ -21,7 +21,7 @@
     "build-wasm": "./scripts/build.sh",
     "build-tsc": "tsc -p tsconfig.json",
     "watch-tsc": "tsc -w -p tsconfig.json",
-    "package": "webpack && node ./scripts/cp ./out/onig.wasm ./release/onig.wasm",
+    "package": "npm run build-tsc && webpack && node ./scripts/cp ./out/onig.wasm ./release/onig.wasm",
     "prepublishOnly": "npm run package"
   },
   "devDependencies": {
