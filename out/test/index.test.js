@@ -4,7 +4,11 @@
  *--------------------------------------------------------*/
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -28,7 +32,7 @@ const path = __importStar(require("path"));
 const index_1 = require("../index");
 const REPO_ROOT = path.join(__dirname, '../../');
 const wasm = fs.readFileSync(path.join(REPO_ROOT, './out/onig.wasm')).buffer;
-const loadPromise = index_1.loadWASM({ instantiator: (imports) => WebAssembly.instantiate(wasm, imports) });
+const loadPromise = (0, index_1.loadWASM)({ instantiator: (imports) => WebAssembly.instantiate(wasm, imports) });
 function testLib(name, callback) {
     test(name, async () => {
         await loadPromise;
@@ -112,7 +116,7 @@ testLib('FindOption.NotBeginPosition', () => {
     const str = new index_1.OnigString('first-and-second');
     const scanner = new index_1.OnigScanner(['\\G-and']);
     assert.deepStrictEqual(scanner.findNextMatchSync(str, 5), { index: 0, captureIndices: [{ start: 5, end: 9, length: 4 }] });
-    assert.deepStrictEqual(scanner.findNextMatchSync(str, 5, 4 /* NotBeginPosition */), null);
+    assert.deepStrictEqual(scanner.findNextMatchSync(str, 5, 4 /* FindOption.NotBeginPosition */), null);
     scanner.dispose();
     str.dispose();
 });
@@ -121,7 +125,7 @@ testLib('FindOption.NotBeginString', () => {
     const scanner = new index_1.OnigScanner(['\\Afirst']);
     assert.deepStrictEqual(scanner.findNextMatchSync(str, 10), null);
     assert.deepStrictEqual(scanner.findNextMatchSync(str, 0), { index: 0, captureIndices: [{ start: 0, end: 5, length: 5 }] });
-    assert.deepStrictEqual(scanner.findNextMatchSync(str, 0, 1 /* NotBeginString */), null);
+    assert.deepStrictEqual(scanner.findNextMatchSync(str, 0, 1 /* FindOption.NotBeginString */), null);
     scanner.dispose();
     str.dispose();
 });
@@ -129,7 +133,7 @@ testLib('FindOption.NotEndString', () => {
     const str = new index_1.OnigString('first-and-first');
     const scanner = new index_1.OnigScanner(['first\\z']);
     assert.deepStrictEqual(scanner.findNextMatchSync(str, 10), { index: 0, captureIndices: [{ start: 10, end: 15, length: 5 }] });
-    assert.deepStrictEqual(scanner.findNextMatchSync(str, 10, 2 /* NotEndString */), null);
+    assert.deepStrictEqual(scanner.findNextMatchSync(str, 10, 2 /* FindOption.NotEndString */), null);
     scanner.dispose();
     str.dispose();
 });

@@ -14,6 +14,41 @@ function throwLastOnigError(onigBinding) {
     throw new Error(onigBinding.UTF8ToString(onigBinding._getLastOnigError()));
 }
 class UtfString {
+    static _utf8ByteLength(str) {
+        let result = 0;
+        for (let i = 0, len = str.length; i < len; i++) {
+            const charCode = str.charCodeAt(i);
+            let codepoint = charCode;
+            let wasSurrogatePair = false;
+            if (charCode >= 0xd800 && charCode <= 0xdbff) {
+                // Hit a high surrogate, try to look for a matching low surrogate
+                if (i + 1 < len) {
+                    const nextCharCode = str.charCodeAt(i + 1);
+                    if (nextCharCode >= 0xdc00 && nextCharCode <= 0xdfff) {
+                        // Found the matching low surrogate
+                        codepoint = (((charCode - 0xd800) << 10) + 0x10000) | (nextCharCode - 0xdc00);
+                        wasSurrogatePair = true;
+                    }
+                }
+            }
+            if (codepoint <= 0x7f) {
+                result += 1;
+            }
+            else if (codepoint <= 0x7ff) {
+                result += 2;
+            }
+            else if (codepoint <= 0xffff) {
+                result += 3;
+            }
+            else {
+                result += 4;
+            }
+            if (wasSurrogatePair) {
+                i++;
+            }
+        }
+        return result;
+    }
     constructor(str) {
         const utf16Length = str.length;
         const utf8Length = UtfString._utf8ByteLength(str);
@@ -95,41 +130,6 @@ class UtfString {
         this.utf8Value = utf8Value;
         this.utf16OffsetToUtf8 = utf16OffsetToUtf8;
         this.utf8OffsetToUtf16 = utf8OffsetToUtf16;
-    }
-    static _utf8ByteLength(str) {
-        let result = 0;
-        for (let i = 0, len = str.length; i < len; i++) {
-            const charCode = str.charCodeAt(i);
-            let codepoint = charCode;
-            let wasSurrogatePair = false;
-            if (charCode >= 0xd800 && charCode <= 0xdbff) {
-                // Hit a high surrogate, try to look for a matching low surrogate
-                if (i + 1 < len) {
-                    const nextCharCode = str.charCodeAt(i + 1);
-                    if (nextCharCode >= 0xdc00 && nextCharCode <= 0xdfff) {
-                        // Found the matching low surrogate
-                        codepoint = (((charCode - 0xd800) << 10) + 0x10000) | (nextCharCode - 0xdc00);
-                        wasSurrogatePair = true;
-                    }
-                }
-            }
-            if (codepoint <= 0x7f) {
-                result += 1;
-            }
-            else if (codepoint <= 0x7ff) {
-                result += 2;
-            }
-            else if (codepoint <= 0xffff) {
-                result += 3;
-            }
-            else {
-                result += 4;
-            }
-            if (wasSurrogatePair) {
-                i++;
-            }
-        }
-        return result;
     }
     createString(onigBinding) {
         const result = onigBinding._omalloc(this.utf8Length);
@@ -232,9 +232,9 @@ class OnigScanner {
     }
     findNextMatchSync(string, startPosition, arg) {
         let debugCall = defaultDebugCall;
-        let options = 0 /* None */;
+        let options = 0 /* FindOption.None */;
         if (typeof arg === 'number') {
-            if (arg & 8 /* DebugCall */) {
+            if (arg & 8 /* FindOption.DebugCall */) {
                 debugCall = true;
             }
             options = arg;
@@ -285,7 +285,7 @@ class OnigScanner {
 }
 exports.OnigScanner = OnigScanner;
 function _loadWASM(loader, print, resolve, reject) {
-    onig_1.default({
+    (0, onig_1.default)({
         print: print,
         instantiateWasm: (importObject, callback) => {
             if (typeof performance === 'undefined') {
