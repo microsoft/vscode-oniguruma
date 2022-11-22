@@ -30,9 +30,6 @@ extends:
           - script: npm ci
             displayName: Install dependencies
 
-          - script: npm run build-tsc
-            displayName: Compile
-
           - script: npm run package
             displayName: Bundle
 
