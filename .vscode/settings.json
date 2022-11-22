@@ -4,4 +4,7 @@
 	"[cpp]": {
 		"editor.insertSpaces": true
 	},
+	"git.branchProtection": ["main", "release/*"],
+	"git.branchProtectionPrompt": "alwaysCommitToNewBranch",
+	"git.branchRandomName.enable": true
 }

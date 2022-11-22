@@ -11,3 +11,4 @@
 /SECURITY.md
 /tsconfig.json
 /webpack.config.js
+/build/pipeline.yml
