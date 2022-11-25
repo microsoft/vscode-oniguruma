@@ -1,14 +1,15 @@
 /.devcontainer/
+/.github/
 /.vscode/
+/build/pipeline.yml
 /deps/
 /node_modules/
 /out/
 /scripts/
 /src/
+/.gitattributes
 /.gitignore
 /.gitmodules
 /.npmignore
-/SECURITY.md
 /tsconfig.json
 /webpack.config.js
-/build/pipeline.yml
