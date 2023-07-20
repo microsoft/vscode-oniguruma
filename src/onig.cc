@@ -7,6 +7,51 @@
 #include <cstring>
 #include "oniguruma.h"
 #include <emscripten/emscripten.h>
+#include <emscripten/bind.h>
+
+EMSCRIPTEN_BINDINGS(vscode_oniguruma) {
+  emscripten::constant("ONIG_OPTION_DEFAULT", ONIG_OPTION_DEFAULT);
+  emscripten::constant("ONIG_OPTION_NONE", ONIG_OPTION_NONE);
+  emscripten::constant("ONIG_OPTION_IGNORECASE", ONIG_OPTION_IGNORECASE);
+  emscripten::constant("ONIG_OPTION_EXTEND", ONIG_OPTION_EXTEND);
+  emscripten::constant("ONIG_OPTION_MULTILINE", ONIG_OPTION_MULTILINE);
+  emscripten::constant("ONIG_OPTION_SINGLELINE", ONIG_OPTION_SINGLELINE);
+  emscripten::constant("ONIG_OPTION_FIND_LONGEST", ONIG_OPTION_FIND_LONGEST);
+  emscripten::constant("ONIG_OPTION_FIND_NOT_EMPTY", ONIG_OPTION_FIND_NOT_EMPTY);
+  emscripten::constant("ONIG_OPTION_NEGATE_SINGLELINE", ONIG_OPTION_NEGATE_SINGLELINE);
+  emscripten::constant("ONIG_OPTION_DONT_CAPTURE_GROUP", ONIG_OPTION_DONT_CAPTURE_GROUP);
+  emscripten::constant("ONIG_OPTION_CAPTURE_GROUP", ONIG_OPTION_CAPTURE_GROUP);
+  emscripten::constant("ONIG_OPTION_NOTBOL", ONIG_OPTION_NOTBOL);
+  emscripten::constant("ONIG_OPTION_NOTEOL", ONIG_OPTION_NOTEOL);
+  emscripten::constant("ONIG_OPTION_POSIX_REGION", ONIG_OPTION_POSIX_REGION);
+  emscripten::constant("ONIG_OPTION_CHECK_VALIDITY_OF_STRING", ONIG_OPTION_CHECK_VALIDITY_OF_STRING);
+  emscripten::constant("ONIG_OPTION_IGNORECASE_IS_ASCII", ONIG_OPTION_IGNORECASE_IS_ASCII);
+  emscripten::constant("ONIG_OPTION_WORD_IS_ASCII", ONIG_OPTION_WORD_IS_ASCII);
+  emscripten::constant("ONIG_OPTION_DIGIT_IS_ASCII", ONIG_OPTION_DIGIT_IS_ASCII);
+  emscripten::constant("ONIG_OPTION_SPACE_IS_ASCII", ONIG_OPTION_SPACE_IS_ASCII);
+  emscripten::constant("ONIG_OPTION_POSIX_IS_ASCII", ONIG_OPTION_POSIX_IS_ASCII);
+  emscripten::constant("ONIG_OPTION_TEXT_SEGMENT_EXTENDED_GRAPHEME_CLUSTER", ONIG_OPTION_TEXT_SEGMENT_EXTENDED_GRAPHEME_CLUSTER);
+  emscripten::constant("ONIG_OPTION_TEXT_SEGMENT_WORD", ONIG_OPTION_TEXT_SEGMENT_WORD);
+  emscripten::constant("ONIG_OPTION_NOT_BEGIN_STRING", ONIG_OPTION_NOT_BEGIN_STRING);
+  emscripten::constant("ONIG_OPTION_NOT_END_STRING", ONIG_OPTION_NOT_END_STRING);
+  emscripten::constant("ONIG_OPTION_NOT_BEGIN_POSITION", ONIG_OPTION_NOT_BEGIN_POSITION);
+  emscripten::constant("ONIG_OPTION_CALLBACK_EACH_MATCH", ONIG_OPTION_CALLBACK_EACH_MATCH);
+  emscripten::constant("ONIG_OPTION_MAXBIT", ONIG_OPTION_MAXBIT);
+
+  emscripten::constant("ONIG_SYNTAX_DEFAULT", (unsigned int)ONIG_SYNTAX_DEFAULT);
+  emscripten::constant("ONIG_SYNTAX_ASIS", (unsigned int)ONIG_SYNTAX_ASIS);
+  emscripten::constant("ONIG_SYNTAX_POSIX_BASIC", (unsigned int)ONIG_SYNTAX_POSIX_BASIC);
+  emscripten::constant("ONIG_SYNTAX_POSIX_EXTENDED", (unsigned int)ONIG_SYNTAX_POSIX_EXTENDED);
+  emscripten::constant("ONIG_SYNTAX_EMACS", (unsigned int)ONIG_SYNTAX_EMACS);
+  emscripten::constant("ONIG_SYNTAX_GREP", (unsigned int)ONIG_SYNTAX_GREP);
+  emscripten::constant("ONIG_SYNTAX_GNU_REGEX", (unsigned int)ONIG_SYNTAX_GNU_REGEX);
+  emscripten::constant("ONIG_SYNTAX_JAVA", (unsigned int)ONIG_SYNTAX_JAVA);
+  emscripten::constant("ONIG_SYNTAX_PERL", (unsigned int)ONIG_SYNTAX_PERL);
+  emscripten::constant("ONIG_SYNTAX_PERL_NG", (unsigned int)ONIG_SYNTAX_PERL_NG);
+  emscripten::constant("ONIG_SYNTAX_RUBY", (unsigned int)ONIG_SYNTAX_RUBY);
+  emscripten::constant("ONIG_SYNTAX_PYTHON", (unsigned int)ONIG_SYNTAX_PYTHON);
+  emscripten::constant("ONIG_SYNTAX_ONIGURUMA", (unsigned int)ONIG_SYNTAX_ONIGURUMA);
+}
 
 extern "C" {
 
@@ -83,13 +128,13 @@ bool hasGAnchor(unsigned char* str, int len) {
   return false;
 }
 
-OnigRegExp* createOnigRegExp(unsigned char* data, int length) {
+OnigRegExp* createOnigRegExp(unsigned char* data, int length, int options, OnigSyntaxType* syntax) {
   OnigRegExp* result;
   regex_t* regex;
 
   lastOnigStatus = onig_new(&regex, data, data + length,
-                            ONIG_OPTION_CAPTURE_GROUP, ONIG_ENCODING_UTF8,
-                            ONIG_SYNTAX_DEFAULT, &lastOnigErrorInfo);
+                            options, ONIG_ENCODING_UTF8,
+                            syntax, &lastOnigErrorInfo);
 
   if (lastOnigStatus != ONIG_NORMAL) {
     return NULL;
@@ -161,7 +206,7 @@ OnigRegion* searchOnigRegExp(OnigRegExp* regex, int strCacheId, unsigned char* s
 #pragma region OnigScanner
 
 EMSCRIPTEN_KEEPALIVE
-int createOnigScanner(unsigned char** patterns, int* lengths, int count) {
+int createOnigScanner(unsigned char** patterns, int* lengths, int count, int options, OnigSyntaxType* syntax) {
   int i, j;
   OnigRegExp** regexes;
   regex_t** regs;
@@ -172,7 +217,7 @@ int createOnigScanner(unsigned char** patterns, int* lengths, int count) {
   regs = (regex_t**)malloc(sizeof(regex_t*) * count);
 
   for (i = 0; i < count; i++) {
-    regexes[i] = createOnigRegExp(patterns[i], lengths[i]);
+    regexes[i] = createOnigRegExp(patterns[i], lengths[i], options, syntax);
     regs[i] = regexes[i]->regex;
     if (regexes[i] == NULL) {
       // parsing this regex failed, so clean up all the ones created so far
@@ -213,34 +258,20 @@ int freeOnigScanner(OnigScanner* scanner) {
 #define FIND_OPTION_NOT_END_STRING       2U
 #define FIND_OPTION_NOT_BEGIN_POSITION   4U
 
-OnigOptionType toOnigOption(int option) {
-  OnigOptionType onigOption = ONIG_OPTION_NONE;
-  if (option & FIND_OPTION_NOT_BEGIN_STRING) {
-    onigOption |= ONIG_OPTION_NOT_BEGIN_STRING;
-  }
-  if (option & FIND_OPTION_NOT_END_STRING) {
-    onigOption |= ONIG_OPTION_NOT_END_STRING;
-  }
-  if (option & FIND_OPTION_NOT_BEGIN_POSITION) {
-    onigOption |= ONIG_OPTION_NOT_BEGIN_POSITION;
-  }
-  return onigOption;
-}
 
 EMSCRIPTEN_KEEPALIVE
-int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position, int option) {
+int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position, int options) {
   int bestLocation = 0;
   int bestResultIndex = 0;
   OnigRegion* bestResult = NULL;
   OnigRegion* result;
   int i;
   int location;
-  OnigOptionType onigOption = toOnigOption(option);
 
   if (strLength < 1000) {
     // for short strings, it is better to use the RegSet API, but for longer strings caching pays off
     bestResultIndex = onig_regset_search(scanner->rset, strData, strData + strLength, strData + position, strData + strLength,
-                                         ONIG_REGSET_POSITION_LEAD, onigOption, &bestLocation);
+                                         ONIG_REGSET_POSITION_LEAD, options, &bestLocation);
     if (bestResultIndex < 0) {
       return 0;
     }
@@ -248,7 +279,7 @@ int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char
   }
 
   for (i = 0; i < scanner->count; i++) {
-    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position, onigOption);
+    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position, options);
     if (result != NULL && result->num_regs > 0) {
       location = result->beg[0];
 
@@ -272,7 +303,7 @@ int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char
 }
 
 EMSCRIPTEN_KEEPALIVE
-int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position, int option) {
+int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position, int options) {
   printf("\n~~~~~~~~~~~~~~~~~~~~\nEntering findNextOnigScannerMatch:%.*s\n", strLength, strData);
   int bestLocation = 0;
   int bestResultIndex = 0;
@@ -280,14 +311,13 @@ int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned c
   OnigRegion* result;
   int i;
   int location;
-  OnigOptionType onigOption = toOnigOption(option);
   double startTime;
   double elapsedTime;
 
   for (i = 0; i < scanner->count; i++) {
     printf("- searchOnigRegExp: %.*s\n", scanner->regexes[i]->strLength, scanner->regexes[i]->strData);
     startTime = emscripten_get_now();
-    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position, onigOption);
+    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position, options);
     elapsedTime = emscripten_get_now() - startTime;
     if (result != NULL && result->num_regs > 0) {
       location = result->beg[0];

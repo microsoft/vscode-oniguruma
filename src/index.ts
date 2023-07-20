@@ -6,23 +6,126 @@ import { IOnigBinding, Pointer, IOnigMatch, IOnigCaptureIndex, OnigScanner as IO
 import OnigasmModuleFactory from './onig';
 
 export const enum FindOption {
-	None = 0,
+	/**
+	 * equivalent of ONIG_OPTION_DEFAULT
+	 */
+	Default,
+	/**
+	 * equivalent of ONIG_OPTION_NONE
+	 */
+	None,
+	/**
+	 * equivalent of ONIG_OPTION_IGNORECASE
+	 */
+	Ignorecase,
+	/**
+	 * equivalent of ONIG_OPTION_EXTEND
+	 */
+	Extend,
+	/**
+	 * equivalent of ONIG_OPTION_MULTILINE
+	 */
+	Multiline,
+	/**
+	 * equivalent of ONIG_OPTION_SINGLELINE
+	 */
+	Singleline,
+	/**
+	 * equivalent of ONIG_OPTION_FIND_LONGEST
+	 */
+	FindLongest,
+	/**
+	 * equivalent of ONIG_OPTION_FIND_NOT_EMPTY
+	 */
+	FindNotEmpty,
+	/**
+	 * equivalent of ONIG_OPTION_NEGATE_SINGLELINE
+	 */
+	NegateSingleline,
+	/**
+	 * equivalent of ONIG_OPTION_DONT_CAPTURE_GROUP
+	 */
+	DontCaptureGroup,
+	/**
+	 * equivalent of ONIG_OPTION_CAPTURE_GROUP
+	 */
+	CaptureGroup,
+	/**
+	 * equivalent of ONIG_OPTION_NOTBOL
+	 */
+	Notbol,
+	/**
+	 * equivalent of ONIG_OPTION_NOTEOL
+	 */
+	Noteol,
+	/**
+	 * equivalent of ONIG_OPTION_CHECK_VALIDITY_OF_STRING
+	 */
+	CheckValidityOfString,
+	/**
+	 * equivalent of ONIG_OPTION_IGNORECASE_IS_ASCII
+	 */
+	IgnorecaseIsAscii,
+	/**
+	 * equivalent of ONIG_OPTION_WORD_IS_ASCII
+	 */
+	WordIsAscii,
+	/**
+	 * equivalent of ONIG_OPTION_DIGIT_IS_ASCII
+	 */
+	DigitIsAscii,
+	/**
+	 * equivalent of ONIG_OPTION_SPACE_IS_ASCII
+	 */
+	SpaceIsAscii,
+	/**
+	 * equivalent of ONIG_OPTION_POSIX_IS_ASCII
+	 */
+	PosixIsAscii,
+	/**
+	 * equivalent of ONIG_OPTION_TEXT_SEGMENT_EXTENDED_GRAPHEME_CLUSTER
+	 */
+	TextSegmentExtendedGraphemeCluster,
+	/**
+	 * equivalent of ONIG_OPTION_TEXT_SEGMENT_WORD
+	 */
+	TextSegmentWord,
 	/**
 	 * equivalent of ONIG_OPTION_NOT_BEGIN_STRING: (str) isn't considered as begin of string (* fail \A)
 	 */
-	NotBeginString = 1,
+	NotBeginString,
 	/**
 	 * equivalent of ONIG_OPTION_NOT_END_STRING: (end) isn't considered as end of string (* fail \z, \Z)
 	 */
-	NotEndString = 2,
+	NotEndString,
 	/**
 	 * equivalent of ONIG_OPTION_NOT_BEGIN_POSITION: (start) isn't considered as start position of search (* fail \G)
 	 */
-	NotBeginPosition = 4,
+	NotBeginPosition,
+	/**
+	 * equivalent of ONIG_OPTION_
+	 */
+	CallbackEachMatch,
 	/**
 	 * used for debugging purposes.
 	 */
-	DebugCall = 8,
+	DebugCall
+}
+
+export const enum Syntax {
+	Default,
+	Asis,
+	PosixBasic,
+	PosixExtended,
+	Emacs,
+	Grep,
+	GnuRegex,
+	Java,
+	Perl,
+	PerlNg,
+	Ruby,
+	Python,
+	Oniguruma
 }
 
 let onigBinding: IOnigBinding | null = null;
@@ -245,12 +348,18 @@ export class OnigString implements IOnigString {
 	}
 }
 
+export interface IOnigScannerConfig {
+	options?: FindOption[],
+	syntax?: Syntax
+}
+
 export class OnigScanner implements IOnigScanner {
 
 	private readonly _onigBinding: IOnigBinding;
 	private readonly _ptr: Pointer;
+	private readonly _options: FindOption[];
 
-	constructor(patterns: string[]) {
+	constructor(patterns: string[], config?: IOnigScannerConfig) {
 		if (!onigBinding) {
 			throw new Error(`Must invoke loadWASM first.`);
 		}
@@ -267,7 +376,12 @@ export class OnigScanner implements IOnigScanner {
 		const strLenPtr = onigBinding._omalloc(4 * patterns.length);
 		onigBinding.HEAPU32.set(strLenArr, strLenPtr / 4);
 
-		const scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
+		this._onigBinding = onigBinding;
+		this._options = config?.options ?? [FindOption.CaptureGroup];
+		const opts = this.onigOptions(this._options);
+		const syntax = this.onigSyntax(config?.syntax ?? Syntax.Default);
+		const scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length, opts, syntax);
+		this._ptr = scannerPtr;
 
 		for (let i = 0, len = patterns.length; i < len; i++) {
 			onigBinding._ofree(strPtrsArr[i]);
@@ -278,26 +392,23 @@ export class OnigScanner implements IOnigScanner {
 		if (scannerPtr === 0) {
 			throwLastOnigError(onigBinding);
 		}
-
-		this._onigBinding = onigBinding;
-		this._ptr = scannerPtr;
 	}
 
 	public dispose(): void {
 		this._onigBinding._freeOnigScanner(this._ptr);
 	}
 
-	public findNextMatchSync(string: string | OnigString, startPosition: number, options: number): IOnigMatch | null;
+	public findNextMatchSync(string: string | OnigString, startPosition: number, options: FindOption[]): IOnigMatch | null;
 	public findNextMatchSync(string: string | OnigString, startPosition: number, debugCall: boolean): IOnigMatch | null;
 	public findNextMatchSync(string: string | OnigString, startPosition: number): IOnigMatch | null;
-	public findNextMatchSync(string: string | OnigString, startPosition: number, arg?: number | boolean): IOnigMatch | null {
+	public findNextMatchSync(string: string | OnigString, startPosition: number, arg?: FindOption[] | boolean): IOnigMatch | null {
 		let debugCall = defaultDebugCall;
-		let options = FindOption.None;
-		if (typeof arg === 'number') {
-			if (arg & FindOption.DebugCall) {
+		let options = this._options;
+		if (Array.isArray(arg)) {
+			if (arg.includes(FindOption.DebugCall)) {
 				debugCall = true;
 			}
-			options = arg;
+			options = options.concat(arg);
 		} else if (typeof arg === 'boolean') {
 			debugCall = arg;
 		}
@@ -310,13 +421,14 @@ export class OnigScanner implements IOnigScanner {
 		return this._findNextMatchSync(string, startPosition, debugCall, options);
 	}
 
-	private _findNextMatchSync(string: OnigString, startPosition: number, debugCall: boolean, options: number): IOnigMatch | null {
+	private _findNextMatchSync(string: OnigString, startPosition: number, debugCall: boolean, options: FindOption[]): IOnigMatch | null {
 		const onigBinding = this._onigBinding;
+		const opts = this.onigOptions(options)
 		let resultPtr: Pointer;
 		if (debugCall) {
-			resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), options);
+			resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), opts);
 		} else {
-			resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), options);
+			resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), opts);
 		}
 		if (resultPtr === 0) {
 			// no match
@@ -340,6 +452,98 @@ export class OnigScanner implements IOnigScanner {
 			index: index,
 			captureIndices: captureIndices
 		};
+	}
+
+	private onigOptions(options: FindOption[]): number {
+		return options.map(o => this.onigOption(o)).reduce((acc, o) => acc | o, this._onigBinding.ONIG_OPTION_NONE);
+	}
+
+	private onigSyntax(syntax: Syntax): Pointer {
+		switch(syntax) {
+			case Syntax.Default:
+				return this._onigBinding.ONIG_SYNTAX_DEFAULT;
+			case Syntax.Asis:
+				return this._onigBinding.ONIG_SYNTAX_ASIS;
+			case Syntax.PosixBasic:
+				return this._onigBinding.ONIG_SYNTAX_POSIX_BASIC;
+			case Syntax.PosixExtended:
+				return this._onigBinding.ONIG_SYNTAX_POSIX_EXTENDED;
+			case Syntax.Emacs:
+				return this._onigBinding.ONIG_SYNTAX_EMACS;
+			case Syntax.Grep:
+				return this._onigBinding.ONIG_SYNTAX_GREP;
+			case Syntax.GnuRegex:
+				return this._onigBinding.ONIG_SYNTAX_GNU_REGEX;
+			case Syntax.Java:
+				return this._onigBinding.ONIG_SYNTAX_JAVA;
+			case Syntax.Perl:
+				return this._onigBinding.ONIG_SYNTAX_PERL;
+			case Syntax.PerlNg:
+				return this._onigBinding.ONIG_SYNTAX_PERL_NG;
+			case Syntax.Ruby:
+				return this._onigBinding.ONIG_SYNTAX_RUBY;
+			case Syntax.Python:
+				return this._onigBinding.ONIG_SYNTAX_PYTHON;
+			case Syntax.Oniguruma:
+				return this._onigBinding.ONIG_SYNTAX_ONIGURUMA;
+		}
+	}
+
+	private onigOption(option: FindOption): number {
+		switch (option) {
+			case FindOption.None:
+				return this._onigBinding.ONIG_OPTION_NONE;
+			case FindOption.Default:
+				return this._onigBinding.ONIG_OPTION_DEFAULT;
+			case FindOption.Ignorecase:
+				return this._onigBinding.ONIG_OPTION_IGNORECASE;
+			case FindOption.Extend:
+				return this._onigBinding.ONIG_OPTION_EXTEND;
+			case FindOption.Multiline:
+				return this._onigBinding.ONIG_OPTION_MULTILINE;
+			case FindOption.Singleline:
+				return this._onigBinding.ONIG_OPTION_SINGLELINE;
+			case FindOption.FindLongest:
+				return this._onigBinding.ONIG_OPTION_FIND_LONGEST;
+			case FindOption.FindNotEmpty:
+				return this._onigBinding.ONIG_OPTION_FIND_NOT_EMPTY;
+			case FindOption.NegateSingleline:
+				return this._onigBinding.ONIG_OPTION_NEGATE_SINGLELINE;
+			case FindOption.DontCaptureGroup:
+				return this._onigBinding.ONIG_OPTION_DONT_CAPTURE_GROUP;
+			case FindOption.CaptureGroup:
+				return this._onigBinding.ONIG_OPTION_CAPTURE_GROUP;
+			case FindOption.Notbol:
+				return this._onigBinding.ONIG_OPTION_NOTBOL;
+			case FindOption.Noteol:
+				return this._onigBinding.ONIG_OPTION_NOTEOL;
+			case FindOption.CheckValidityOfString:
+				return this._onigBinding.ONIG_OPTION_CHECK_VALIDITY_OF_STRING;
+			case FindOption.IgnorecaseIsAscii:
+				return this._onigBinding.ONIG_OPTION_IGNORECASE_IS_ASCII;
+			case FindOption.WordIsAscii:
+				return this._onigBinding.ONIG_OPTION_WORD_IS_ASCII;
+			case FindOption.DigitIsAscii:
+				return this._onigBinding.ONIG_OPTION_DIGIT_IS_ASCII;
+			case FindOption.SpaceIsAscii:
+				return this._onigBinding.ONIG_OPTION_SPACE_IS_ASCII;
+			case FindOption.PosixIsAscii:
+				return this._onigBinding.ONIG_OPTION_POSIX_IS_ASCII;
+			case FindOption.TextSegmentExtendedGraphemeCluster:
+				return this._onigBinding.ONIG_OPTION_TEXT_SEGMENT_EXTENDED_GRAPHEME_CLUSTER;
+			case FindOption.TextSegmentWord:
+				return this._onigBinding.ONIG_OPTION_TEXT_SEGMENT_WORD;
+			case FindOption.NotBeginString:
+				return this._onigBinding.ONIG_OPTION_NOT_BEGIN_STRING;
+			case FindOption.NotEndString:
+				return this._onigBinding.ONIG_OPTION_NOT_END_STRING;
+			case FindOption.NotBeginPosition:
+				return this._onigBinding.ONIG_OPTION_NOT_BEGIN_POSITION;
+			case FindOption.CallbackEachMatch:
+				return this._onigBinding.ONIG_OPTION_CALLBACK_EACH_MATCH;
+			case FindOption.DebugCall:
+				return this._onigBinding.ONIG_OPTION_DEFAULT;
+		}
 	}
 }
 

@@ -5,7 +5,7 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { loadWASM, OnigString, OnigScanner, FindOption } from '../index';
+import { loadWASM, OnigString, OnigScanner, FindOption, Syntax } from '../index';
 
 const REPO_ROOT = path.join(__dirname, '../../');
 const wasm = fs.readFileSync(path.join(REPO_ROOT, './out/onig.wasm')).buffer;
@@ -105,7 +105,7 @@ testLib('FindOption.NotBeginPosition', () => {
 	const str = new OnigString('first-and-second');
 	const scanner = new OnigScanner(['\\G-and']);
 	assert.deepStrictEqual(scanner.findNextMatchSync(str, 5), { index: 0, captureIndices: [{ start: 5, end: 9, length: 4 }] });
-	assert.deepStrictEqual(scanner.findNextMatchSync(str, 5, FindOption.NotBeginPosition), null);
+	assert.deepStrictEqual(scanner.findNextMatchSync(str, 5, [FindOption.NotBeginPosition]), null);
 	scanner.dispose();
 	str.dispose();
 });
@@ -115,7 +115,7 @@ testLib('FindOption.NotBeginString', () => {
 	const scanner = new OnigScanner(['\\Afirst']);
 	assert.deepStrictEqual(scanner.findNextMatchSync(str, 10), null);
 	assert.deepStrictEqual(scanner.findNextMatchSync(str, 0), { index: 0, captureIndices: [{ start: 0, end: 5, length: 5 }] });
-	assert.deepStrictEqual(scanner.findNextMatchSync(str, 0, FindOption.NotBeginString), null);
+	assert.deepStrictEqual(scanner.findNextMatchSync(str, 0, [FindOption.NotBeginString]), null);
 	scanner.dispose();
 	str.dispose();
 });
@@ -124,7 +124,23 @@ testLib('FindOption.NotEndString', () => {
 	const str = new OnigString('first-and-first');
 	const scanner = new OnigScanner(['first\\z']);
 	assert.deepStrictEqual(scanner.findNextMatchSync(str, 10), { index: 0, captureIndices: [{ start: 10, end: 15, length: 5 }] });
-	assert.deepStrictEqual(scanner.findNextMatchSync(str, 10, FindOption.NotEndString), null);
+	assert.deepStrictEqual(scanner.findNextMatchSync(str, 10, [FindOption.NotEndString]), null);
+	scanner.dispose();
+	str.dispose();
+});
+
+testLib('Configure scanner', () => {
+	const str = new OnigString('ABCD');
+	const scanner = new OnigScanner(['^[a-z]*$'], { options: [FindOption.Ignorecase] });
+	assert.deepStrictEqual(scanner.findNextMatchSync(str, 0), { index: 0, captureIndices: [{ start: 0, end: 4, length: 4 }] })
+	scanner.dispose();
+	str.dispose();
+});
+
+testLib('Configure syntax', () => {
+	const str = new OnigString('first-and-first');
+	const scanner = new OnigScanner(['^(?P<name>.*)$'], { syntax: Syntax.Python });
+	assert.deepStrictEqual(scanner.findNextMatchSync(str, 0), { index: 0, captureIndices: [{ start: 0, end: 15, length: 15 }, { start: 0, end: 15, length: 15 }] })
 	scanner.dispose();
 	str.dispose();
 });
