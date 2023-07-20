@@ -128,3 +128,7 @@ testLib('FindOption.NotEndString', () => {
 	scanner.dispose();
 	str.dispose();
 });
+
+testLib('Throw error', () => {
+	assert.throws(() => new OnigScanner(['(?P<name>a*)']), /undefined group option/)
+});
