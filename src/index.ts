@@ -423,7 +423,7 @@ export class OnigScanner implements IOnigScanner {
 
 	private _findNextMatchSync(string: OnigString, startPosition: number, debugCall: boolean, options: FindOption[]): IOnigMatch | null {
 		const onigBinding = this._onigBinding;
-		const opts = this.onigOptions(options)
+		const opts = this.onigOptions(options);
 		let resultPtr: Pointer;
 		if (debugCall) {
 			resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), opts);
