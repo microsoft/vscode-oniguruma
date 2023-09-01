@@ -28,8 +28,22 @@ extends:
       - name: vscode-oniguruma
 
         buildSteps:
+          - script: git submodule init
+          - script: git submodule update
+
+          - script: ./build/setup-emsdk.sh
+            displayName: Setup emsdk
+          - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
+          - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
+
           - script: npm ci
             displayName: Install dependencies
+
+          - script: npm run build-onig
+            displayName: Build oniguruma
+
+          - script: npm run build-wasm
+            displayName: Build wasm
 
           - script: npm run package
             displayName: Bundle
@@ -37,11 +51,25 @@ extends:
         testPlatforms:
           - name: Linux
             nodeVersions:
-              - 16.x
+              - 18.x
 
         testSteps:
+          - script: git submodule init
+          - script: git submodule update
+
+          - script: ./build/setup-emsdk.sh
+            displayName: Setup emsdk
+          - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
+          - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
+
           - script: npm ci
             displayName: Install dependencies
+
+          - script: npm run build-onig
+            displayName: Build oniguruma
+
+          - script: npm run build-wasm
+            displayName: Build wasm
 
           - script: npm run build-tsc
             displayName: Compile
