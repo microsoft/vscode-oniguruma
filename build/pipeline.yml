@@ -30,6 +30,8 @@ extends:
         buildSteps:
           - script: ./setup-emsdk.sh
             displayName: Setup emsdk
+          - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
+          - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
 
           - script: npm ci
             displayName: Install dependencies
@@ -51,6 +53,8 @@ extends:
         testSteps:
           - script: ./setup-emsdk.sh
             displayName: Setup emsdk
+          - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
+          - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
 
           - script: npm ci
             displayName: Install dependencies
