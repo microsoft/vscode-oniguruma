@@ -218,12 +218,13 @@ int createOnigScanner(unsigned char** patterns, int* lengths, int count, int opt
 
   for (i = 0; i < count; i++) {
     regexes[i] = createOnigRegExp(patterns[i], lengths[i], options, syntax);
-    regs[i] = regexes[i]->regex;
-    if (regexes[i] == NULL) {
+    if (regexes[i] != NULL) {
+      regs[i] = regexes[i]->regex;
+    } else {
       // parsing this regex failed, so clean up all the ones created so far
       for (j = 0; j < i; j++) {
-        free(regs[i]);
-        freeOnigRegExp(regexes[i]);
+        free(regs[j]);
+        freeOnigRegExp(regexes[j]);
       }
       free(regexes);
       free(regs);
