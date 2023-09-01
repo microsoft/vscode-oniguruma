@@ -28,7 +28,7 @@ extends:
       - name: vscode-oniguruma
 
         buildSteps:
-          - script: ./setup-emsdk.sh
+          - script: ./build/setup-emsdk.sh
             displayName: Setup emsdk
           - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
           - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
@@ -51,7 +51,7 @@ extends:
               - 18.x
 
         testSteps:
-          - script: ./setup-emsdk.sh
+          - script: ./build/setup-emsdk.sh
             displayName: Setup emsdk
           - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
           - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
