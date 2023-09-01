@@ -4,22 +4,6 @@
 
 export type Pointer = number;
 
-export const enum FindOption {
-	None = 0,
-	/**
-	 * equivalent of ONIG_OPTION_NOT_BEGIN_STRING: (str) isn't considered as begin of string (* fail \A)
-	 */
-	NotBeginString = 1,
-	/**
-	 * equivalent of ONIG_OPTION_NOT_END_STRING: (end) isn't considered as end of string (* fail \z, \Z)
-	 */
-	NotEndString = 2,
-	/**
-	 * equivalent of ONIG_OPTION_NOT_BEGIN_POSITION: (start) isn't considered as start position of search (* fail \G)
-	 */
-	NotBeginPosition = 4,
-}
-
 export interface IOnigBinding {
 	HEAPU8: Uint8Array;
 	HEAPU32: Uint32Array;
@@ -29,10 +13,52 @@ export interface IOnigBinding {
 	UTF8ToString(ptr: Pointer): string;
 
 	_getLastOnigError(): Pointer;
-	_createOnigScanner(strPtrsPtr: Pointer, strLenPtr: Pointer, count: number): Pointer;
+	_createOnigScanner(strPtrsPtr: Pointer, strLenPtr: Pointer, count: number, options: number, syntax: Pointer): Pointer;
 	_freeOnigScanner(ptr: Pointer): void;
 	_findNextOnigScannerMatch(scanner: Pointer, strCacheId: number, strData: Pointer, strLength: number, position: number, options: number): number;
 	_findNextOnigScannerMatchDbg(scanner: Pointer, strCacheId: number, strData: Pointer, strLength: number, position: number, options: number): number;
+
+	ONIG_OPTION_DEFAULT: number;
+	ONIG_OPTION_NONE: number;
+	ONIG_OPTION_IGNORECASE: number;
+	ONIG_OPTION_EXTEND: number;
+	ONIG_OPTION_MULTILINE: number;
+	ONIG_OPTION_SINGLELINE: number;
+	ONIG_OPTION_FIND_LONGEST: number;
+	ONIG_OPTION_FIND_NOT_EMPTY: number;
+	ONIG_OPTION_NEGATE_SINGLELINE: number;
+	ONIG_OPTION_DONT_CAPTURE_GROUP: number;
+	ONIG_OPTION_CAPTURE_GROUP: number;
+	ONIG_OPTION_NOTBOL: number;
+	ONIG_OPTION_NOTEOL: number;
+	ONIG_OPTION_POSIX_REGION: number;
+	ONIG_OPTION_CHECK_VALIDITY_OF_STRING: number;
+	ONIG_OPTION_IGNORECASE_IS_ASCII: number;
+	ONIG_OPTION_WORD_IS_ASCII: number;
+	ONIG_OPTION_DIGIT_IS_ASCII: number;
+	ONIG_OPTION_SPACE_IS_ASCII: number;
+	ONIG_OPTION_POSIX_IS_ASCII: number;
+	ONIG_OPTION_TEXT_SEGMENT_EXTENDED_GRAPHEME_CLUSTER: number;
+	ONIG_OPTION_TEXT_SEGMENT_WORD: number;
+	ONIG_OPTION_NOT_BEGIN_STRING: number;
+	ONIG_OPTION_NOT_END_STRING: number;
+	ONIG_OPTION_NOT_BEGIN_POSITION: number;
+	ONIG_OPTION_CALLBACK_EACH_MATCH: number;
+	ONIG_OPTION_MAXBIT: number;
+
+	ONIG_SYNTAX_DEFAULT: Pointer;
+	ONIG_SYNTAX_ASIS: Pointer;
+	ONIG_SYNTAX_POSIX_BASIC: Pointer;
+	ONIG_SYNTAX_POSIX_EXTENDED: Pointer;
+	ONIG_SYNTAX_EMACS: Pointer;
+	ONIG_SYNTAX_GREP: Pointer;
+	ONIG_SYNTAX_GNU_REGEX: Pointer;
+	ONIG_SYNTAX_JAVA: Pointer;
+	ONIG_SYNTAX_PERL: Pointer;
+	ONIG_SYNTAX_PERL_NG: Pointer;
+	ONIG_SYNTAX_RUBY: Pointer;
+	ONIG_SYNTAX_PYTHON: Pointer;
+	ONIG_SYNTAX_ONIGURUMA: Pointer;
 }
 
 export interface IOnigCaptureIndex {
