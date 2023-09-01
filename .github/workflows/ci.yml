@@ -11,8 +11,11 @@ jobs:
           submodules: true
       - uses: actions/setup-node@v2
         with:
-          node-version: '18.x'
+          node-version: '18.17.1'
       - run: ./build/setup-emsdk.sh
+      - run: echo "/opt/dev/emsdk/upstream/emscripten" >> $GITHUB_PATH
+      - run: echo "/opt/dev/emsdk/node/18.17.1_64bit/bin" >> $GITHUB_PATH
+      - run: echo "/opt/dev/emsdk" >> $GITHUB_PATH
       - run: npm ci
       - run: npm run build-onig
       - run: npm run build-wasm
