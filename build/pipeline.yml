@@ -12,7 +12,7 @@ resources:
     - repository: templates
       type: github
       name: microsoft/vscode-engineering
-      ref: main
+      ref: lszomoru/npm-no-sdl
       endpoint: Monaco
 
 parameters:
@@ -28,6 +28,9 @@ extends:
       - name: vscode-oniguruma
 
         buildSteps:
+          - script: git submodule init
+          - script: git submodule update
+
           - script: ./build/setup-emsdk.sh
             displayName: Setup emsdk
           - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
@@ -51,6 +54,9 @@ extends:
               - 18.x
 
         testSteps:
+          - script: git submodule init
+          - script: git submodule update
+
           - script: ./build/setup-emsdk.sh
             displayName: Setup emsdk
           - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
