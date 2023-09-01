@@ -254,12 +254,6 @@ int freeOnigScanner(OnigScanner* scanner) {
   return 0;
 }
 
-#define FIND_OPTION_NONE                 0U
-#define FIND_OPTION_NOT_BEGIN_STRING     1U
-#define FIND_OPTION_NOT_END_STRING       2U
-#define FIND_OPTION_NOT_BEGIN_POSITION   4U
-
-
 EMSCRIPTEN_KEEPALIVE
 int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position, int options) {
   int bestLocation = 0;
