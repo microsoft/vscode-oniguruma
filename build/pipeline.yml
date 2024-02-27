@@ -77,4 +77,7 @@ extends:
           - script: npm test
             displayName: Test
 
+        # Package does not build on Windows and was manually verified.
+        skipAPIScan: 'true'
+
         publishPackage: ${{ parameters.publishPackage }}
