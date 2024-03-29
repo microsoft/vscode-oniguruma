@@ -51,7 +51,7 @@ extends:
         testPlatforms:
           - name: Linux
             nodeVersions:
-              - 18.x
+              - 18.17.x
 
         testSteps:
           - script: git submodule init
