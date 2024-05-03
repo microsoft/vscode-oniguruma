@@ -68,6 +68,10 @@ extends:
           - script: npm run build-onig
             displayName: Build oniguruma
 
+          - script: cat deps/oniguruma/config.log
+            condition: always()
+            displayName: Troubleshoot config.log
+
           - script: npm run build-wasm
             displayName: Build wasm
 
