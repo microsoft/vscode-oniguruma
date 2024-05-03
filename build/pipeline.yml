@@ -17,7 +17,6 @@ resources:
   containers:
     - container: jsnode
       image: mcr.microsoft.com/vscode/devcontainers/javascript-node:18
-      endpoint: VSCodeHub
 
 parameters:
   - name: publishPackage
