@@ -33,6 +33,7 @@ extends:
 
           - script: |
               ./build/setup-emsdk.sh
+              source /opt/dev/emsdk/emsdk_env.sh
               echo "##vso[task.setvariable variable=PATH;]${PATH}"
               echo "##vso[task.setvariable variable=EMSDK;]${EMSDK}"
               echo "##vso[task.setvariable variable=EMSDK_NODE;]${EMSDK_NODE}"
@@ -63,6 +64,7 @@ extends:
 
           - script: |
               ./build/setup-emsdk.sh
+              source /opt/dev/emsdk/emsdk_env.sh
               echo "##vso[task.setvariable variable=PATH;]${PATH}"
               echo "##vso[task.setvariable variable=EMSDK;]${EMSDK}"
               echo "##vso[task.setvariable variable=EMSDK_NODE;]${EMSDK_NODE}"
