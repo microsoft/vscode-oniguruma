@@ -31,6 +31,9 @@ extends:
           - script: git submodule init
           - script: git submodule update
 
+          - script: sudo apt update -y && sudo apt install -y build-essential
+            displayName: Install build tools
+
           - script: |
               ./build/setup-emsdk.sh
               source /opt/dev/emsdk/emsdk_env.sh
@@ -61,6 +64,9 @@ extends:
         testSteps:
           - script: git submodule init
           - script: git submodule update
+
+          - script: sudo apt update -y && sudo apt install -y build-essential
+            displayName: Install build tools
 
           - script: |
               ./build/setup-emsdk.sh
