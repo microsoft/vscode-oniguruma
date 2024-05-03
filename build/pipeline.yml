@@ -31,7 +31,11 @@ extends:
           - script: git submodule init
           - script: git submodule update
 
-          - script: ./build/setup-emsdk.sh
+          - script: |
+              ./build/setup-emsdk.sh
+              echo "##vso[task.setvariable variable=PATH;]${PATH}"
+              echo "##vso[task.setvariable variable=EMSDK;]${EMSDK}"
+              echo "##vso[task.setvariable variable=EMSDK_NODE;]${EMSDK_NODE}"
             displayName: Setup emsdk
           # - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
           # - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
@@ -57,7 +61,11 @@ extends:
           - script: git submodule init
           - script: git submodule update
 
-          - script: ./build/setup-emsdk.sh
+          - script: |
+              ./build/setup-emsdk.sh
+              echo "##vso[task.setvariable variable=PATH;]${PATH}"
+              echo "##vso[task.setvariable variable=EMSDK;]${EMSDK}"
+              echo "##vso[task.setvariable variable=EMSDK_NODE;]${EMSDK_NODE}"
             displayName: Setup emsdk
           # - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
           # - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
