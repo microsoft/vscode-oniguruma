@@ -13,8 +13,8 @@ jobs:
         with:
           node-version: '18.x'
       - run: ./build/setup-emsdk.sh
-      - run: echo "/opt/dev/emsdk/upstream/emscripten" >> $GITHUB_PATH
-      - run: echo "/opt/dev/emsdk" >> $GITHUB_PATH
+      # - run: echo "/opt/dev/emsdk/upstream/emscripten" >> $GITHUB_PATH
+      # - run: echo "/opt/dev/emsdk" >> $GITHUB_PATH
       - run: npm ci
       - run: npm run build-onig
       - run: npm run build-wasm
