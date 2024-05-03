@@ -17,7 +17,7 @@
   },
   "scripts": {
     "test": "mocha --ui=tdd ./out/test/index.test.js",
-    "build-onig": "cd deps/oniguruma && autoreconf -vfi && emconfigure ./configure && make clean && emmake make",
+    "build-onig": "cd deps/oniguruma && autoreconf -vfi && emconfigure ./configure --host none && make clean && emmake make",
     "build-wasm": "./scripts/build.sh",
     "build-tsc": "tsc -p tsconfig.json",
     "watch-tsc": "tsc -w -p tsconfig.json",
