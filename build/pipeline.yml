@@ -31,8 +31,8 @@ extends:
           - script: git submodule init
           - script: git submodule update
 
-          - script: sudo apt update -y && sudo apt install -y build-essential
-            displayName: Install build tools
+          # - script: sudo apt update -y && sudo apt install -y build-essential
+          #   displayName: Install build tools
 
           - script: |
               ./build/setup-emsdk.sh
@@ -43,6 +43,7 @@ extends:
             displayName: Setup emsdk
           # - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
           # - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
+          - script: echo '##vso[task.setvariable variable=INCLUDE_PATH;]/usr/local/include'
 
           - script: npm ci
             displayName: Install dependencies
@@ -65,8 +66,8 @@ extends:
           - script: git submodule init
           - script: git submodule update
 
-          - script: sudo apt update -y && sudo apt install -y build-essential
-            displayName: Install build tools
+          # - script: sudo apt update -y && sudo apt install -y build-essential
+          #   displayName: Install build tools
 
           - script: |
               ./build/setup-emsdk.sh
@@ -77,6 +78,7 @@ extends:
             displayName: Setup emsdk
           # - script: echo '##vso[task.prependpath]/opt/dev/emsdk/upstream/emscripten'
           # - script: echo '##vso[task.prependpath]/opt/dev/emsdk'
+          - script: echo '##vso[task.setvariable variable=INCLUDE_PATH;]/usr/local/include'
 
           - script: npm ci
             displayName: Install dependencies
