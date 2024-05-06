@@ -12,7 +12,7 @@ resources:
     - repository: templates
       type: github
       name: microsoft/vscode-engineering
-      ref: robo/opt_skip_sysroot_setup
+      ref: main
       endpoint: Monaco
 
 parameters:
