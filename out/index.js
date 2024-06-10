@@ -200,7 +200,8 @@ OnigString.LAST_ID = 0;
 OnigString._sharedPtr = 0; // a pointer to a string of 10000 bytes
 OnigString._sharedPtrInUse = false;
 class OnigScanner {
-    constructor(patterns) {
+    constructor(patterns, config) {
+        var _a, _b;
         if (!onigBinding) {
             throw new Error(`Must invoke loadWASM first.`);
         }
@@ -215,7 +216,12 @@ class OnigScanner {
         onigBinding.HEAPU32.set(strPtrsArr, strPtrsPtr / 4);
         const strLenPtr = onigBinding._omalloc(4 * patterns.length);
         onigBinding.HEAPU32.set(strLenArr, strLenPtr / 4);
-        const scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length);
+        this._onigBinding = onigBinding;
+        this._options = (_a = config === null || config === void 0 ? void 0 : config.options) !== null && _a !== void 0 ? _a : [10 /* FindOption.CaptureGroup */];
+        const opts = this.onigOptions(this._options);
+        const syntax = this.onigSyntax((_b = config === null || config === void 0 ? void 0 : config.syntax) !== null && _b !== void 0 ? _b : 0 /* Syntax.Default */);
+        const scannerPtr = onigBinding._createOnigScanner(strPtrsPtr, strLenPtr, patterns.length, opts, syntax);
+        this._ptr = scannerPtr;
         for (let i = 0, len = patterns.length; i < len; i++) {
             onigBinding._ofree(strPtrsArr[i]);
         }
@@ -224,20 +230,18 @@ class OnigScanner {
         if (scannerPtr === 0) {
             throwLastOnigError(onigBinding);
         }
-        this._onigBinding = onigBinding;
-        this._ptr = scannerPtr;
     }
     dispose() {
         this._onigBinding._freeOnigScanner(this._ptr);
     }
     findNextMatchSync(string, startPosition, arg) {
         let debugCall = defaultDebugCall;
-        let options = 0 /* FindOption.None */;
-        if (typeof arg === 'number') {
-            if (arg & 8 /* FindOption.DebugCall */) {
+        let options = this._options;
+        if (Array.isArray(arg)) {
+            if (arg.includes(25 /* FindOption.DebugCall */)) {
                 debugCall = true;
             }
-            options = arg;
+            options = options.concat(arg);
         }
         else if (typeof arg === 'boolean') {
             debugCall = arg;
@@ -252,12 +256,13 @@ class OnigScanner {
     }
     _findNextMatchSync(string, startPosition, debugCall, options) {
         const onigBinding = this._onigBinding;
+        const opts = this.onigOptions(options);
         let resultPtr;
         if (debugCall) {
-            resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), options);
+            resultPtr = onigBinding._findNextOnigScannerMatchDbg(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), opts);
         }
         else {
-            resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), options);
+            resultPtr = onigBinding._findNextOnigScannerMatch(this._ptr, string.id, string.ptr, string.utf8Length, string.convertUtf16OffsetToUtf8(startPosition), opts);
         }
         if (resultPtr === 0) {
             // no match
@@ -281,6 +286,124 @@ class OnigScanner {
             index: index,
             captureIndices: captureIndices
         };
+    }
+    onigOptions(options) {
+        return options.map(o => this.onigOption(o)).reduce((acc, o) => acc | o, this._onigBinding.ONIG_OPTION_NONE);
+    }
+    onigSyntax(syntax) {
+        switch (syntax) {
+            case 0 /* Syntax.Default */:
+                return this._onigBinding.ONIG_SYNTAX_DEFAULT;
+            case 1 /* Syntax.Asis */:
+                return this._onigBinding.ONIG_SYNTAX_ASIS;
+            case 2 /* Syntax.PosixBasic */:
+                return this._onigBinding.ONIG_SYNTAX_POSIX_BASIC;
+            case 3 /* Syntax.PosixExtended */:
+                return this._onigBinding.ONIG_SYNTAX_POSIX_EXTENDED;
+            case 4 /* Syntax.Emacs */:
+                return this._onigBinding.ONIG_SYNTAX_EMACS;
+            case 5 /* Syntax.Grep */:
+                return this._onigBinding.ONIG_SYNTAX_GREP;
+            case 6 /* Syntax.GnuRegex */:
+                return this._onigBinding.ONIG_SYNTAX_GNU_REGEX;
+            case 7 /* Syntax.Java */:
+                return this._onigBinding.ONIG_SYNTAX_JAVA;
+            case 8 /* Syntax.Perl */:
+                return this._onigBinding.ONIG_SYNTAX_PERL;
+            case 9 /* Syntax.PerlNg */:
+                return this._onigBinding.ONIG_SYNTAX_PERL_NG;
+            case 10 /* Syntax.Ruby */:
+                return this._onigBinding.ONIG_SYNTAX_RUBY;
+            case 11 /* Syntax.Python */:
+                return this._onigBinding.ONIG_SYNTAX_PYTHON;
+            case 12 /* Syntax.Oniguruma */:
+                return this._onigBinding.ONIG_SYNTAX_ONIGURUMA;
+        }
+    }
+    onigOption(option) {
+        switch (option) {
+            case 1 /* FindOption.None */:
+                return this._onigBinding.ONIG_OPTION_NONE;
+            case 0 /* FindOption.Default */:
+                return this._onigBinding.ONIG_OPTION_DEFAULT;
+            case 2 /* FindOption.Ignorecase */:
+                return this._onigBinding.ONIG_OPTION_IGNORECASE;
+            case 3 /* FindOption.Extend */:
+                return this._onigBinding.ONIG_OPTION_EXTEND;
+            case 4 /* FindOption.Multiline */:
+                return this._onigBinding.ONIG_OPTION_MULTILINE;
+            case 5 /* FindOption.Singleline */:
+                return this._onigBinding.ONIG_OPTION_SINGLELINE;
+            case 6 /* FindOption.FindLongest */:
+                return this._onigBinding.ONIG_OPTION_FIND_LONGEST;
+            case 7 /* FindOption.FindNotEmpty */:
+                return this._onigBinding.ONIG_OPTION_FIND_NOT_EMPTY;
+            case 8 /* FindOption.NegateSingleline */:
+                return this._onigBinding.ONIG_OPTION_NEGATE_SINGLELINE;
+            case 9 /* FindOption.DontCaptureGroup */:
+                return this._onigBinding.ONIG_OPTION_DONT_CAPTURE_GROUP;
+            case 10 /* FindOption.CaptureGroup */:
+                return this._onigBinding.ONIG_OPTION_CAPTURE_GROUP;
+            case 11 /* FindOption.Notbol */:
+                return this._onigBinding.ONIG_OPTION_NOTBOL;
+            case 12 /* FindOption.Noteol */:
+                return this._onigBinding.ONIG_OPTION_NOTEOL;
+            case 13 /* FindOption.CheckValidityOfString */:
+                return this._onigBinding.ONIG_OPTION_CHECK_VALIDITY_OF_STRING;
+            case 14 /* FindOption.IgnorecaseIsAscii */:
+                return this._onigBinding.ONIG_OPTION_IGNORECASE_IS_ASCII;
+            case 15 /* FindOption.WordIsAscii */:
+                return this._onigBinding.ONIG_OPTION_WORD_IS_ASCII;
+            case 16 /* FindOption.DigitIsAscii */:
+                return this._onigBinding.ONIG_OPTION_DIGIT_IS_ASCII;
+            case 17 /* FindOption.SpaceIsAscii */:
+                return this._onigBinding.ONIG_OPTION_SPACE_IS_ASCII;
+            case 18 /* FindOption.PosixIsAscii */:
+                return this._onigBinding.ONIG_OPTION_POSIX_IS_ASCII;
+            case 19 /* FindOption.TextSegmentExtendedGraphemeCluster */:
+                return this._onigBinding.ONIG_OPTION_TEXT_SEGMENT_EXTENDED_GRAPHEME_CLUSTER;
+            case 20 /* FindOption.TextSegmentWord */:
+                return this._onigBinding.ONIG_OPTION_TEXT_SEGMENT_WORD;
+            case 21 /* FindOption.NotBeginString */:
+                return this._onigBinding.ONIG_OPTION_NOT_BEGIN_STRING;
+            case 22 /* FindOption.NotEndString */:
+                return this._onigBinding.ONIG_OPTION_NOT_END_STRING;
+            case 23 /* FindOption.NotBeginPosition */:
+                return this._onigBinding.ONIG_OPTION_NOT_BEGIN_POSITION;
+            case 24 /* FindOption.CallbackEachMatch */:
+                return this._onigBinding.ONIG_OPTION_CALLBACK_EACH_MATCH;
+            case 25 /* FindOption.DebugCall */:
+                return this._onigBinding.ONIG_OPTION_DEFAULT;
+        }
+    }
+    groupsToNumber(patternIndex) {
+        const onigBinding = this._onigBinding;
+        const resultPtr = onigBinding._groupsToNumber(this._ptr, patternIndex);
+        let result = new Map();
+        try {
+            let offset = resultPtr / 4; // byte offset -> uint32 offset
+            const HEAPU32 = onigBinding.HEAPU32;
+            const count = HEAPU32[offset++];
+            let namesOffset = HEAPU32[offset++] / 4;
+            let names = [];
+            for (let i = 0; i < count; i++) {
+                names[i] = onigBinding.UTF8ToString(HEAPU32[namesOffset++]);
+            }
+            let groupNumbersOffset = HEAPU32[offset++] / 4;
+            for (let i = 0; i < count; i++) {
+                const numbersCount = HEAPU32[groupNumbersOffset++];
+                let numbersOffset = HEAPU32[groupNumbersOffset++] / 4;
+                let numbers = [];
+                for (let j = 0; j < numbersCount; j++) {
+                    numbers[j] = HEAPU32[numbersOffset++];
+                }
+                result.set(names[i], numbers);
+            }
+        }
+        finally {
+            this._onigBinding._freeOnigGroups(resultPtr);
+        }
+        return result;
     }
 }
 exports.OnigScanner = OnigScanner;
