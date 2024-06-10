@@ -85,6 +85,17 @@ typedef struct OnigScanner_ {
   int count;
 } OnigScanner;
 
+typedef struct OnigGroupNumbers_ {
+  int count;
+  int* numbers;
+} OnigGroupNumbers;
+
+typedef struct OnigGroups_ {
+  int count;
+  unsigned char** names;
+  OnigGroupNumbers* groupNumbers;
+} OnigGroups;
+
 int lastOnigStatus = 0;
 OnigErrorInfo lastOnigErrorInfo;
 
@@ -339,6 +350,53 @@ int findNextOnigScannerMatchDbg(OnigScanner* scanner, int strCacheId, unsigned c
   }
 
   return encodeOnigRegion(bestResult, bestResultIndex);
+}
+
+int nameCallback(const UChar* name, const UChar* nameEnd, int groupNumCount, int* groupNums, regex_t* reg, void* arg) {
+  OnigGroups* groups = (OnigGroups*)arg;
+  int nextGroupIndex = groups->count++;
+
+  unsigned char* nameStr = (unsigned char*)malloc((nameEnd - name) + 1);
+  strncpy((char*)nameStr, (char*)name, nameEnd - name);
+  nameStr[nameEnd - name] = '\0';
+  groups->names[nextGroupIndex] = nameStr;
+
+  int* groupNumbers = (int*)malloc(sizeof(int) * groupNumCount);
+  memcpy(groupNumbers, groupNums, sizeof(int) * groupNumCount);
+  groups->groupNumbers[nextGroupIndex].count = groupNumCount;
+  groups->groupNumbers[nextGroupIndex].numbers = groupNumbers;
+
+  return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+OnigGroups* groupsToNumber(OnigScanner* scanner, int patternIndex) {
+  regex_t* regex = scanner->regexes[patternIndex]->regex;
+  int numOfNames = onig_number_of_names(regex);
+
+  OnigGroups* groups = (OnigGroups*)malloc(sizeof(OnigGroups));
+  groups->count = 0;
+  groups->names = (unsigned char**)malloc(sizeof(unsigned char*) * numOfNames);
+  groups->groupNumbers = (OnigGroupNumbers*)malloc(sizeof(OnigGroupNumbers) * numOfNames);
+
+  memset(groups->names, 0, sizeof(unsigned char*) * numOfNames);
+  memset(groups->groupNumbers, 0, sizeof(OnigGroupNumbers*) * numOfNames);
+
+  onig_foreach_name(regex, nameCallback, (void*)groups);
+
+  return groups;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void freeOnigGroups(OnigGroups* groups) {
+  int i;
+  for (i = 0; i < groups->count; i++) {
+    free(groups->names[i]);
+    free(groups->groupNumbers[i].numbers);
+  }
+  free(groups->names);
+  free(groups->groupNumbers);
+  free(groups);
 }
 
 #pragma endregion

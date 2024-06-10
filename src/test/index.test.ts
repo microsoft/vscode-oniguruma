@@ -148,3 +148,9 @@ testLib('Configure syntax', () => {
 testLib('Throw error', () => {
 	assert.throws(() => new OnigScanner(['(?P<name>a*)']), /undefined group option/)
 });
+
+testLib('Group names to numbers', () => {
+	const scanner = new OnigScanner(['(?<n1>a)(?<n2>b)(?<n1>c)'], {});
+	assert.deepStrictEqual(scanner.groupsToNumber(0), new Map([['n1', [1, 3]], ['n2', [2]]]));
+	scanner.dispose();
+});

@@ -116,7 +116,7 @@ testLib('FindOption.NotBeginPosition', () => {
     const str = new index_1.OnigString('first-and-second');
     const scanner = new index_1.OnigScanner(['\\G-and']);
     assert.deepStrictEqual(scanner.findNextMatchSync(str, 5), { index: 0, captureIndices: [{ start: 5, end: 9, length: 4 }] });
-    assert.deepStrictEqual(scanner.findNextMatchSync(str, 5, 4 /* FindOption.NotBeginPosition */), null);
+    assert.deepStrictEqual(scanner.findNextMatchSync(str, 5, [23 /* FindOption.NotBeginPosition */]), null);
     scanner.dispose();
     str.dispose();
 });
@@ -125,7 +125,7 @@ testLib('FindOption.NotBeginString', () => {
     const scanner = new index_1.OnigScanner(['\\Afirst']);
     assert.deepStrictEqual(scanner.findNextMatchSync(str, 10), null);
     assert.deepStrictEqual(scanner.findNextMatchSync(str, 0), { index: 0, captureIndices: [{ start: 0, end: 5, length: 5 }] });
-    assert.deepStrictEqual(scanner.findNextMatchSync(str, 0, 1 /* FindOption.NotBeginString */), null);
+    assert.deepStrictEqual(scanner.findNextMatchSync(str, 0, [21 /* FindOption.NotBeginString */]), null);
     scanner.dispose();
     str.dispose();
 });
@@ -133,7 +133,29 @@ testLib('FindOption.NotEndString', () => {
     const str = new index_1.OnigString('first-and-first');
     const scanner = new index_1.OnigScanner(['first\\z']);
     assert.deepStrictEqual(scanner.findNextMatchSync(str, 10), { index: 0, captureIndices: [{ start: 10, end: 15, length: 5 }] });
-    assert.deepStrictEqual(scanner.findNextMatchSync(str, 10, 2 /* FindOption.NotEndString */), null);
+    assert.deepStrictEqual(scanner.findNextMatchSync(str, 10, [22 /* FindOption.NotEndString */]), null);
     scanner.dispose();
     str.dispose();
+});
+testLib('Configure scanner', () => {
+    const str = new index_1.OnigString('ABCD');
+    const scanner = new index_1.OnigScanner(['^[a-z]*$'], { options: [2 /* FindOption.Ignorecase */] });
+    assert.deepStrictEqual(scanner.findNextMatchSync(str, 0), { index: 0, captureIndices: [{ start: 0, end: 4, length: 4 }] });
+    scanner.dispose();
+    str.dispose();
+});
+testLib('Configure syntax', () => {
+    const str = new index_1.OnigString('first-and-first');
+    const scanner = new index_1.OnigScanner(['^(?P<name>.*)$'], { syntax: 11 /* Syntax.Python */ });
+    assert.deepStrictEqual(scanner.findNextMatchSync(str, 0), { index: 0, captureIndices: [{ start: 0, end: 15, length: 15 }, { start: 0, end: 15, length: 15 }] });
+    scanner.dispose();
+    str.dispose();
+});
+testLib('Throw error', () => {
+    assert.throws(() => new index_1.OnigScanner(['(?P<name>a*)']), /undefined group option/);
+});
+testLib('Group names to numbers', () => {
+    const scanner = new index_1.OnigScanner(['(?<n1>a)(?<n2>b)(?<n1>c)'], {});
+    assert.deepStrictEqual(scanner.groupsToNumber(0), new Map([['n1', [1, 3]], ['n2', [2]]]));
+    scanner.dispose();
 });
