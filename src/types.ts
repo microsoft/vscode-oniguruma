@@ -17,6 +17,8 @@ export interface IOnigBinding {
 	_freeOnigScanner(ptr: Pointer): void;
 	_findNextOnigScannerMatch(scanner: Pointer, strCacheId: number, strData: Pointer, strLength: number, position: number, options: number): number;
 	_findNextOnigScannerMatchDbg(scanner: Pointer, strCacheId: number, strData: Pointer, strLength: number, position: number, options: number): number;
+	_groupsToNumber(scanner: Pointer, patternIndex: number): Pointer;
+	_freeOnigGroups(groups: Pointer): void;
 
 	ONIG_OPTION_DEFAULT: number;
 	ONIG_OPTION_NONE: number;
