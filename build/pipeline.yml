@@ -51,7 +51,7 @@ extends:
         testPlatforms:
           - name: Linux
             nodeVersions:
-              - 18.x
+              - 22.x
             useSysroot: false
 
         testSteps:
