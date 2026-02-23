@@ -545,6 +545,37 @@ export class OnigScanner implements IOnigScanner {
 				return this._onigBinding.ONIG_OPTION_DEFAULT;
 		}
 	}
+
+	public groupsToNumber(patternIndex: number): Map<string, number[]> {
+		const onigBinding = this._onigBinding;
+		const resultPtr = onigBinding._groupsToNumber(this._ptr, patternIndex);
+		let result = new Map<string, number[]>();
+		try {
+		  let offset = resultPtr / 4; // byte offset -> uint32 offset
+		  const HEAPU32 = onigBinding.HEAPU32;
+		  const count = HEAPU32[offset++];
+
+			let namesOffset = HEAPU32[offset++] / 4;
+			let names: string[] = [];
+			for (let i = 0; i < count; i++) {
+				names[i] = onigBinding.UTF8ToString(HEAPU32[namesOffset++]);
+			}
+
+			let groupNumbersOffset = HEAPU32[offset++] / 4;
+			for (let i = 0; i < count; i++) {
+				const numbersCount = HEAPU32[groupNumbersOffset++];
+				let numbersOffset = HEAPU32[groupNumbersOffset++] / 4;
+				let numbers: number[] = [];
+				for (let j = 0; j < numbersCount; j++) {
+					numbers[j] = HEAPU32[numbersOffset++];
+				}
+				result.set(names[i], numbers);
+			}
+		} finally {
+			this._onigBinding._freeOnigGroups(resultPtr);
+		}
+		return result;
+	}
 }
 
 export interface WebAssemblyInstantiator {
