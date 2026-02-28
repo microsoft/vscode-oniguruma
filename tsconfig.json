@@ -5,11 +5,14 @@
         "module": "commonjs",
         "target": "es2017",
         "outDir": "out",
-        "lib": ["ES2015", "DOM"]
+        "lib": ["ES2015", "DOM"],
+        "skipLibCheck": true
     },
     "exclude": [
         "node_modules",
         "out",
-        "release"
+        "release",
+        "src/test",
+        "vitest.config.ts"
     ]
 }
