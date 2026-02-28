@@ -2,6 +2,8 @@
  * Copyright (C) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------*/
 
+/// <reference types="vitest/globals" />
+
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
