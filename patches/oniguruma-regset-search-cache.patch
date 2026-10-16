@@ -1,0 +1,240 @@
+diff --git a/src/oniguruma.h b/src/oniguruma.h
+index 096ba7d..6ab6604 100644
+--- a/src/oniguruma.h
++++ b/src/oniguruma.h
+@@ -849,6 +849,14 @@ ONIG_EXTERN
+ OnigRegion* onig_regset_get_region P_((OnigRegSet* set, int at));
+ ONIG_EXTERN
+ int onig_regset_search P_((OnigRegSet* set, const OnigUChar* str, const OnigUChar* end, const OnigUChar* start, const OnigUChar* range, OnigRegSetLead lead, OnigOptionType option, int* rmatch_pos));
++/* Search cache: a position-lead search to the end of the string keeps its
++   search ranges, and a later search in the same string from the position
++   where it stopped, or after, uses them. The caller must clear the cache
++   when the string changes at the same address. */
++ONIG_EXTERN
++void onig_regset_set_search_cache P_((OnigRegSet* set, int enable));
++ONIG_EXTERN
++void onig_regset_clear_search_cache P_((OnigRegSet* set));
+ ONIG_EXTERN
+ int onig_regset_search_with_param P_((OnigRegSet* set, const OnigUChar* str, const OnigUChar* end, const OnigUChar* start, const OnigUChar* range,  OnigRegSetLead lead, OnigOptionType option, OnigMatchParam* mps[], int* rmatch_pos));
+ 
+diff --git a/src/regexec.c b/src/regexec.c
+index cb8e620..4715d65 100644
+--- a/src/regexec.c
++++ b/src/regexec.c
+@@ -4443,18 +4443,6 @@ typedef struct {
+   OnigRegion* region;
+ } RR;
+ 
+-struct OnigRegSetStruct {
+-  RR*          rs;
+-  int          n;
+-  int          alloc;
+-  OnigEncoding enc;
+-  int          anchor;      /* BEGIN_BUF, BEGIN_POS, (SEMI_)END_BUF */
+-  OnigLen      anc_dmin;    /* (SEMI_)END_BUF anchor distance */
+-  OnigLen      anc_dmax;    /* (SEMI_)END_BUF anchor distance */
+-  int          all_low_high;
+-  int          anychar_inf;
+-};
+-
+ enum SearchRangeStatus {
+   SRS_DEAD      = 0,
+   SRS_LOW_HIGH  = 1,
+@@ -4466,8 +4454,31 @@ typedef struct {
+   UChar* low;
+   UChar* high;
+   UChar* sch_range;
++  /* SRS_ALL_RANGE after a forward search found a candidate: past this start,
++     the forward search must run again. NULL: never (no optimization). */
++  UChar* recheck;
+ } SearchRange;
+ 
++struct OnigRegSetStruct {
++  RR*          rs;
++  int          n;
++  int          alloc;
++  OnigEncoding enc;
++  int          anchor;      /* BEGIN_BUF, BEGIN_POS, (SEMI_)END_BUF */
++  OnigLen      anc_dmin;    /* (SEMI_)END_BUF anchor distance */
++  OnigLen      anc_dmax;    /* (SEMI_)END_BUF anchor distance */
++  int          all_low_high;
++  int          anychar_inf;
++  /* Search cache (onig_regset_set_search_cache): the search ranges of the
++     last position-lead search, valid for a later search in the same string
++     from cache_pos or after. cache_pos NULL: no valid ranges. */
++  int          cache_enabled;
++  SearchRange* cache_sr;
++  const UChar* cache_str;
++  const UChar* cache_end;
++  const UChar* cache_pos;
++};
++
+ #define REGSET_MATCH_AND_RETURN_CHECK(upper_range) \
+   r = match_at(reg, str, end, (upper_range), s, msas + i); \
+   if (r != ONIG_MISMATCH) {\
+@@ -4492,17 +4503,46 @@ regset_search_body_position_lead(OnigRegSet* set,
+   OnigEncoding enc;
+   SearchRange* sr;
+ 
++  int cached, reuse;
++
+   n   = set->n;
+   enc = set->enc;
+   s = (UChar* )start;
+ 
+-  sr = (SearchRange* )xmalloc(sizeof(*sr) * n);
+-  CHECK_NULL_RETURN_MEMERR(sr);
++  /* The cache is used only for searches to the end of the string, so that
++     each range's sch_range is the same in every search. */
++  cached = set->cache_enabled != 0 && range == end && orig_range == end;
++  if (cached) {
++    if (IS_NULL(set->cache_sr)) {
++      set->cache_sr = (SearchRange* )xmalloc(sizeof(*sr) * n);
++      CHECK_NULL_RETURN_MEMERR(set->cache_sr);
++      set->cache_pos = NULL;
++    }
++    sr = set->cache_sr;
++    reuse = IS_NOT_NULL(set->cache_pos) && set->cache_str == str &&
++            set->cache_end == end && start >= set->cache_pos;
++    /* Not valid until this search ends without an error. */
++    set->cache_pos = NULL;
++  }
++  else {
++    sr = (SearchRange* )xmalloc(sizeof(*sr) * n);
++    CHECK_NULL_RETURN_MEMERR(sr);
++    reuse = 0;
++  }
+ 
+   for (i = 0; i < n; i++) {
+     reg = set->rs[i].reg;
+ 
++    /* A kept range is valid from a later start: a dead regex has no candidate
++       after the old start, and a low-high range is searched again when s
++       passes its high. An all-range regex with a candidate is valid until the
++       start passes the last position that the candidate allows. */
++    if (reuse && (sr[i].state != SRS_ALL_RANGE || IS_NULL(sr[i].recheck) ||
++                  s <= sr[i].recheck))
++      continue;
++
+     sr[i].state = SRS_DEAD;
++    sr[i].recheck = NULL_UCHARP;
+     if (reg->optimize != OPTIMIZE_NONE) {
+       if (reg->dist_max != INFINITE_LEN) {
+         if (DIST_CAST(end - range) > reg->dist_max)
+@@ -4520,12 +4560,14 @@ regset_search_body_position_lead(OnigRegSet* set,
+       else {
+         sch_range = (UChar* )end;
+         if (forward_search(reg, str, end, s, sch_range, &low, &high)) {
+-          goto total_active;
++          sr[i].state    = SRS_ALL_RANGE;
++          sr[i].low      = s;
++          sr[i].high     = (UChar* )range;
++          sr[i].recheck  = high;
+         }
+       }
+     }
+     else {
+-    total_active:
+       sr[i].state    = SRS_ALL_RANGE;
+       sr[i].low      = s;
+       sr[i].high     = (UChar* )range;
+@@ -4614,19 +4656,44 @@ regset_search_body_position_lead(OnigRegSet* set,
+     } while (1);
+   }
+ 
+-  xfree(sr);
++  if (cached) {
++    set->cache_str = str;
++    set->cache_end = end;
++    set->cache_pos = s;
++  }
++  else
++    xfree(sr);
+   return ONIG_MISMATCH;
+ 
+  finish:
+-  xfree(sr);
++  if (! cached) xfree(sr);
+   return r;
+ 
+  match:
+-  xfree(sr);
++  if (cached) {
++    set->cache_str = str;
++    set->cache_end = end;
++    set->cache_pos = s;
++  }
++  else
++    xfree(sr);
+   *rmatch_pos = (int )(s - str);
+   return i;
+ }
+ 
++extern void
++onig_regset_set_search_cache(OnigRegSet* set, int enable)
++{
++  set->cache_enabled = enable;
++  set->cache_pos = NULL;
++}
++
++extern void
++onig_regset_clear_search_cache(OnigRegSet* set)
++{
++  set->cache_pos = NULL;
++}
++
+ static inline int
+ regset_search_body_regex_lead(OnigRegSet* set,
+               const UChar* str, const UChar* end,
+@@ -5905,6 +5972,9 @@ onig_regset_new(OnigRegSet** rset, int n, regex_t* regs[])
+   set->rs    = rs;
+   set->n     = 0;
+   set->alloc = alloc;
++  set->cache_enabled = 0;
++  set->cache_sr  = (SearchRange* )NULL;
++  set->cache_str = set->cache_end = set->cache_pos = NULL_UCHARP;
+ 
+   for (i = 0; i < n; i++) {
+     regex_t* reg = regs[i];
+@@ -5964,11 +6034,24 @@ update_regset_by_reg(OnigRegSet* set, regex_t* reg)
+   }
+ }
+ 
++/* The number of regexes changes: the kept search ranges do not fit. */
++static void
++regset_drop_search_cache(OnigRegSet* set)
++{
++  if (IS_NOT_NULL(set->cache_sr)) {
++    xfree(set->cache_sr);
++    set->cache_sr = (SearchRange* )NULL;
++  }
++  set->cache_pos = NULL_UCHARP;
++}
++
+ extern int
+ onig_regset_add(OnigRegSet* set, regex_t* reg)
+ {
+   OnigRegion* region;
+ 
++  regset_drop_search_cache(set);
++
+ #ifdef USE_FIND_LONGEST_SEARCH_ALL_OF_RANGE
+   if (OPTON_FIND_LONGEST(reg->options))
+     return ONIGERR_INVALID_ARGUMENT;
+@@ -6008,6 +6091,8 @@ onig_regset_replace(OnigRegSet* set, int at, regex_t* reg)
+   if (at < 0 || at >= set->n)
+     return ONIGERR_INVALID_ARGUMENT;
+ 
++  regset_drop_search_cache(set);
++
+   if (IS_NULL(reg)) {
+     onig_region_free(set->rs[at].region, 1);
+     for (i = at; i < set->n - 1; i++) {
+@@ -6050,6 +6135,7 @@ onig_regset_free(OnigRegSet* set)
+       onig_region_free(region, 1);
+   }
+ 
++  regset_drop_search_cache(set);
+   xfree(set->rs);
+   xfree(set);
+ }

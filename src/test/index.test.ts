@@ -150,3 +150,59 @@ testLib('Configure syntax', () => {
 testLib('Throw error', () => {
 	assert.throws(() => new OnigScanner(['(?P<name>a*)']), /undefined group option/)
 });
+
+testLib('search cache: a search from an earlier position in the same string', () => {
+	const str = new OnigString('xxbxxaxx');
+	const scanner = new OnigScanner(['a', 'b']);
+	// From 3, `b` has no match: the RegSet keeps that, but only for searches from 3 or later.
+	assert.deepStrictEqual(scanner.findNextMatchSync(str, 3), { index: 0, captureIndices: [{ start: 5, end: 6, length: 1 }] });
+	assert.deepStrictEqual(scanner.findNextMatchSync(str, 0), { index: 1, captureIndices: [{ start: 2, end: 3, length: 1 }] });
+	scanner.dispose();
+	str.dispose();
+});
+
+testLib('search cache: another string at the same address', () => {
+	const scanner = new OnigScanner(['a', 'b']);
+	// Short strings use one shared buffer, so the second string is at the address of the first. In the
+	// first string, `b` has no match; the second search starts where the first stopped.
+	const first = new OnigString('axx');
+	assert.deepStrictEqual(scanner.findNextMatchSync(first, 0), { index: 0, captureIndices: [{ start: 0, end: 1, length: 1 }] });
+	first.dispose();
+	const second = new OnigString('xxb');
+	assert.deepStrictEqual(scanner.findNextMatchSync(second, 0), { index: 1, captureIndices: [{ start: 2, end: 3, length: 1 }] });
+	second.dispose();
+	scanner.dispose();
+});
+
+testLib('search cache: a tokenizer walk over short and long strings', () => {
+	const scanner = new OnigScanner(['foo', 'bar\\d', '[a-y]*z', '(?<=\\()x+']);
+	const regexes = [/foo/g, /bar\d/g, /[a-y]*z/g, /(?<=\()x+/g];
+	const words = ['foo', 'bar1', 'qz', '(xx', 'bar', ' ', 'z', ' (x', 'f', 'o'];
+	for (const length of [50, 999, 1000, 1001, 5000]) {
+		let text = '';
+		for (let i = 0; text.length < length; i = (i * 7 + 3) % words.length) {
+			text += words[i];
+		}
+		text = text.slice(0, length);
+		const str = new OnigString(text);
+		// Each search starts where the match before it ended, as in vscode-textmate.
+		for (let pos = 0; ;) {
+			let expected: { index: number, start: number, end: number } | null = null;
+			regexes.forEach((regex, index) => {
+				regex.lastIndex = pos;
+				const m = regex.exec(text);
+				if (m && (!expected || m.index < expected.start)) {
+					expected = { index, start: m.index, end: m.index + m[0].length };
+				}
+			});
+			const actual = scanner.findNextMatchSync(str, pos);
+			assert.deepStrictEqual(actual && { index: actual.index, start: actual.captureIndices[0].start, end: actual.captureIndices[0].end }, expected, `length ${length}, position ${pos}`);
+			if (!actual) {
+				break;
+			}
+			pos = Math.max(actual.captureIndices[0].end, pos + 1);
+		}
+		str.dispose();
+	}
+	scanner.dispose();
+});
