@@ -67,15 +67,15 @@ testLib('unicode3', () => {
 
 testLib('unicode4', () => {
 	const scanner = new OnigScanner(['X'])
-	assert.deepStrictEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xd83c)}X`, 0), { index: 0, captureIndices: [{ start: 0, end: 1, length: 1 }] });
-	assert.deepStrictEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xd83c)}X`, 1), { index: 0, captureIndices: [{ start: 2, end: 3, length: 1 }] });
-	assert.deepStrictEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xd83c)}X`, 2), { index: 0, captureIndices: [{ start: 2, end: 3, length: 1 }] });
-	assert.deepStrictEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xdfff)}X`, 0), { index: 0, captureIndices: [{ start: 0, end: 1, length: 1 }] });
-	assert.deepStrictEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xdfff)}X`, 1), { index: 0, captureIndices: [{ start: 2, end: 3, length: 1 }] });
-	assert.deepStrictEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xdfff)}X`, 2), { index: 0, captureIndices: [{ start: 2, end: 3, length: 1 }] });
+	assert.deepStrictEqual(scanner.findNextMatchSync('X\ud83cX', 0), { index: 0, captureIndices: [{ start: 0, end: 1, length: 1 }] });
+	assert.deepStrictEqual(scanner.findNextMatchSync('X\ud83cX', 1), { index: 0, captureIndices: [{ start: 2, end: 3, length: 1 }] });
+	assert.deepStrictEqual(scanner.findNextMatchSync('X\ud83cX', 2), { index: 0, captureIndices: [{ start: 2, end: 3, length: 1 }] });
+	assert.deepStrictEqual(scanner.findNextMatchSync('X\udfffX', 0), { index: 0, captureIndices: [{ start: 0, end: 1, length: 1 }] });
+	assert.deepStrictEqual(scanner.findNextMatchSync('X\udfffX', 1), { index: 0, captureIndices: [{ start: 2, end: 3, length: 1 }] });
+	assert.deepStrictEqual(scanner.findNextMatchSync('X\udfffX', 2), { index: 0, captureIndices: [{ start: 2, end: 3, length: 1 }] });
 	// These are actually valid, just testing the min & max
-	assert.deepStrictEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xd800)}${String.fromCharCode(0xdc00)}X`, 2), { index: 0, captureIndices: [{ start: 3, end: 4, length: 1 }] });
-	assert.deepStrictEqual(scanner.findNextMatchSync(`X${String.fromCharCode(0xdbff)}${String.fromCharCode(0xdfff)}X`, 2), { index: 0, captureIndices: [{ start: 3, end: 4, length: 1 }] });
+	assert.deepStrictEqual(scanner.findNextMatchSync('X\ud800\udc00X', 2), { index: 0, captureIndices: [{ start: 3, end: 4, length: 1 }] });
+	assert.deepStrictEqual(scanner.findNextMatchSync('X\udbff\udfffX', 2), { index: 0, captureIndices: [{ start: 3, end: 4, length: 1 }] });
 	scanner.dispose();
 });
 
