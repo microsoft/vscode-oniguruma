@@ -83,6 +83,7 @@ typedef struct OnigScanner_ {
   OnigRegSet* rset;
   OnigRegExp** regexes;
   int count;
+  int lastStrCacheId;
 } OnigScanner;
 
 int lastOnigStatus = 0;
@@ -235,10 +236,16 @@ int createOnigScanner(unsigned char** patterns, int* lengths, int count, int opt
   onig_regset_new(&rset, count, regs);
   free(regs);
 
+  // The RegSet keeps the search range of each regex between searches in the same string
+  // (patches/oniguruma-regset-search-cache.patch), so a search does not look ahead again for
+  // each regex.
+  onig_regset_set_search_cache(rset, 1);
+
   scanner = (OnigScanner*)malloc(sizeof(OnigScanner));
   scanner->rset = rset;
   scanner->regexes = regexes;
   scanner->count = count;
+  scanner->lastStrCacheId = 0;
   return (int)scanner;
 }
 
@@ -258,43 +265,23 @@ EMSCRIPTEN_KEEPALIVE
 int findNextOnigScannerMatch(OnigScanner* scanner, int strCacheId, unsigned char* strData, int strLength, int position, int options) {
   int bestLocation = 0;
   int bestResultIndex = 0;
-  OnigRegion* bestResult = NULL;
-  OnigRegion* result;
-  int i;
-  int location;
 
-  if (strLength < 1000) {
-    // for short strings, it is better to use the RegSet API, but for longer strings caching pays off
-    bestResultIndex = onig_regset_search(scanner->rset, strData, strData + strLength, strData + position, strData + strLength,
-                                         ONIG_REGSET_POSITION_LEAD, options, &bestLocation);
-    if (bestResultIndex < 0) {
-      return 0;
-    }
-    return encodeOnigRegion(onig_regset_get_region(scanner->rset, bestResultIndex), bestResultIndex);
+  // The RegSet's search cache is valid only for the string of the last search. Another string can
+  // be at the same address (OnigString reuses one buffer for short strings), so the cache key is
+  // the string's id.
+  if (scanner->lastStrCacheId != strCacheId) {
+    onig_regset_clear_search_cache(scanner->rset);
+    scanner->lastStrCacheId = strCacheId;
   }
 
-  for (i = 0; i < scanner->count; i++) {
-    result = searchOnigRegExp(scanner->regexes[i], strCacheId, strData, strLength, position, options);
-    if (result != NULL && result->num_regs > 0) {
-      location = result->beg[0];
-
-      if (bestResult == NULL || location < bestLocation) {
-        bestLocation = location;
-        bestResult = result;
-        bestResultIndex = i;
-      }
-
-      if (location == position) {
-        break;
-      }
-    }
-  }
-
-  if (bestResult == NULL) {
+  // The RegSet search stops at the first position where any regex matches. With its search cache,
+  // it is faster than a search of each regex for strings of every length.
+  bestResultIndex = onig_regset_search(scanner->rset, strData, strData + strLength, strData + position, strData + strLength,
+                                       ONIG_REGSET_POSITION_LEAD, options, &bestLocation);
+  if (bestResultIndex < 0) {
     return 0;
   }
-
-  return encodeOnigRegion(bestResult, bestResultIndex);
+  return encodeOnigRegion(onig_regset_get_region(scanner->rset, bestResultIndex), bestResultIndex);
 }
 
 EMSCRIPTEN_KEEPALIVE
