@@ -79,6 +79,18 @@ testLib('unicode4', () => {
 	scanner.dispose();
 });
 
+testLib('unused capture group', () => {
+	const scanner = new OnigScanner(["(a)?b"]);
+  assert.deepStrictEqual(scanner.findNextMatchSync("b", 0), {
+    index: 0,
+    captureIndices: [
+      { start: 0, end: 1, length: 1 },
+      { start: -1, end: -1, length: 0 },
+    ],
+  });
+  scanner.dispose();
+})
+
 testLib('out of bounds', () => {
 	const scanner = new OnigScanner(['X'])
 	assert.deepStrictEqual(scanner.findNextMatchSync(`X💻X`, -1000), { index: 0, captureIndices: [{ start: 0, end: 1, length: 1 }] });

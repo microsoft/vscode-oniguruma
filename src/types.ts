@@ -5,7 +5,8 @@
 export type Pointer = number;
 
 export interface IOnigBinding {
-	HEAPU8: Uint8Array;
+  HEAPU8: Uint8Array;
+  HEAP32: Int32Array;
 	HEAPU32: Uint32Array;
 
 	_omalloc(count: number): Pointer;
