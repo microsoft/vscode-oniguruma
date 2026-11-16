@@ -11,7 +11,7 @@ emcc -O2 \
     -s EXPORT_NAME=Onig \
     -s ALLOW_MEMORY_GROWTH=1 \
     -s SUPPORT_BIG_ENDIAN=1 \
-    -s EXPORTED_RUNTIME_METHODS="['UTF8ToString']" \
+    -s EXPORTED_RUNTIME_METHODS="UTF8ToString,HEAPU8,HEAPU32,HEAP32" \
     --bind
 
 # can be removed when https://github.com/emscripten-core/emscripten/issues/9829 is fixed.

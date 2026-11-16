@@ -434,14 +434,16 @@ export class OnigScanner implements IOnigScanner {
 			// no match
 			return null;
 		}
-		const HEAPU32 = onigBinding.HEAPU32;
-		let offset = resultPtr / 4; // byte offset -> uint32 offset
-		const index = HEAPU32[offset++];
-		const count = HEAPU32[offset++];
+    // The index, count, and capture indices are signed integers (int). Capture
+    // indices may be negative (e.g. `ONIG_REGION_NOTPOS`).
+		const HEAP32 = onigBinding.HEAP32;
+		let offset = resultPtr / 4; // byte offset -> int32 offset
+		const index = HEAP32[offset++];
+		const count = HEAP32[offset++];
 		let captureIndices: IOnigCaptureIndex[] = [];
 		for (let i = 0; i < count; i++) {
-			const beg = string.convertUtf8OffsetToUtf16(HEAPU32[offset++]);
-			const end = string.convertUtf8OffsetToUtf16(HEAPU32[offset++]);
+			const beg = string.convertUtf8OffsetToUtf16(HEAP32[offset++]);
+			const end = string.convertUtf8OffsetToUtf16(HEAP32[offset++]);
 			captureIndices[i] = {
 				start: beg,
 				end: end,
